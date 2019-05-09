@@ -1,0 +1,22 @@
+version: '3.7'
+services:
+  db:
+    build: ./db
+    restart: always
+    environment:
+      POSTGRES_DB: nest-workflow
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: l0c4lp4ss
+    ports:
+      - 5432:5432
+  localstack-s3:
+    image: localstack/localstack
+    volumes:
+      - ./localstack:/tmp/localstack
+    ports:
+      - 5000:5000
+      - 8081:8081 # default 8080 is too standard and conflicts with other services
+    environment:
+      - SERVICES=s3:5000,web:8081
+      - DEFAULT_REGION=us-west-2
+      - DATA_DIR=/tmp/localstack/data

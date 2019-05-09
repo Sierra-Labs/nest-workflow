@@ -1,0 +1,68 @@
+{
+  "http": {
+    "port": "ENV:HTTP_PORT"
+  },
+  "jwt": {
+    "secret": "my-secet",
+    "expiresIn": "1y"
+  },
+  "api": {
+    "basePath": "/api",
+    "explorer": false,
+    "timezone": "UTC"
+  },
+  "google": {
+    "auth": {
+      "clientId": ""
+    }
+  },
+  "aws": {
+    "accessKeyId": "access-key-id",
+    "secretAccessKey": "secret-access-key",
+    "region": "us-west-2",
+    "s3": {
+      "bucket": "bucket",
+      "bucketUrl": "https://s3-us-west-2.amazonaws.com/bucket"
+    }
+  },
+  "database": {
+    "type": "postgres",
+    "poolMax": 100
+  },
+  "email": {
+    "from": "no-reply@sierralabs.io",
+    "settings": {
+      "SES": true
+    },
+    "clientBaseUrl": "http://localhost:4200",
+    "forceEmbeddedImages": true,
+    "templateDir": "/public/templates",
+    "templateEngine": "PUG",
+    "registration": {
+      "isEmailVerification": true,
+      "subject": "Confirm your email address",
+      "path": "/email-verification",
+      "template": "email-verification",
+      "tokenExpiration": {
+        "value": "1hr",
+        "description": "one hour"
+      }
+    },
+    "passwordRecovery": {
+      "subject": "Reset your password",
+      "path": "/password/reset",
+      "template": "password-reset",
+      "tokenExpiration": {
+        "value": "1hr",
+        "description": "one hour"
+      }
+    }
+  },
+  "pagination": {
+    "defaultPageSize": 100,
+    "maxPageSize": 200
+  },
+  "password": {
+    "rounds": 14
+  }
+}

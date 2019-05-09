@@ -1,0 +1,108 @@
+{
+  "http": {
+    "port": {
+      "doc": "Port to run the application.",
+      "format": "Number",
+      "default": 3000,
+      "env": "HTTP_PORT"
+    }
+  },
+  "jwt": {
+    "secret": {
+      "doc": "String, buffer, or object containing either the secret for HMAC algorithms or the PEM encoded private key for RSA and ECDSA.",
+      "format": "String",
+      "default": "my-secret",
+      "env": "JWT_SECRET",
+      "sensitive": true
+    },
+    "expiresIn": {
+      "doc": "expressed in seconds or a string describing a time span [zeit/ms](https://github.com/zeit/ms). Eg: `60`, `\"2 days\"`, `\"10h\"`, `\"7d\"`. A numeric value is interpreted as a seconds count. If you use a string be sure you provide the time units (days, hours, etc), otherwise milliseconds unit is used by default (`\"120\"` is equal to `\"120ms\"`).",
+      "format": "*",
+      "default": "120ms",
+      "env": "JWT_EXPIRES_IN"
+    }
+  },
+  "api": {
+    "basePath": {
+      "doc": "The base URL path for application.",
+      "format": "String",
+      "default": ""
+    },
+    "explorer": {
+      "doc": "Determines if Swagger (Open API) is enabled.",
+      "format": "Boolean",
+      "default": false
+    },
+    "explorerPath": {
+      "doc": "The URL path for Swagger (Open API) specification.",
+      "format": "String",
+      "default": "/explorer"
+    },
+    "timezone": {
+      "doc": "Sets the timezone environment variable of the current process via process.env.TZ. Accepts IANA timezone values.",
+      "format": "String",
+      "default": "UTC"
+    }
+  },
+  "database": {
+    "type": {
+      "format": "String",
+      "default": "postgres"
+    },
+    "host": {
+      "format": "String",
+      "default": "localhost",
+      "env": "TYPEORM_HOST"
+    },
+    "port": {
+      "format": "Number",
+      "default": 5432,
+      "env": "TYPEORM_PORT"
+    },
+    "username": {
+      "format": "String",
+      "default": "root",
+      "env": "TYPEORM_USERNAME"
+    },
+    "password": {
+      "format": "String",
+      "default": "",
+      "env": "TYPEORM_PASSWORD",
+      "sensitive": true
+    },
+    "database": {
+      "format": "String",
+      "default": "",
+      "env": "TYPEORM_DATABASE"
+    },
+    "poolMax": {
+      "format": "Number",
+      "default": 100
+    },
+    "ssl": {
+      "format": "Boolean",
+      "default": true,
+      "env": "TYPEORM_SSL"
+    }
+  },
+  "aws": {
+    "accessKeyId": {
+      "doc": "The AWS IAM Access Key",
+      "format": "String",
+      "default": "",
+      "env": "AWS_ACCESS_KEY_ID"
+    },
+    "secretAccessKey": {
+      "doc": "The AWS IAM Secret",
+      "format": "String",
+      "default": "",
+      "env": "AWS_SECRET_ACCESS_KEY"
+    },
+    "region": {
+      "doc": "The AWS Region",
+      "format": "String",
+      "default": ""
+    }
+  },
+  "vendors": {}
+}

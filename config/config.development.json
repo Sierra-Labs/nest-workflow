@@ -1,0 +1,27 @@
+{
+  "http": {
+    "port": 3000
+  },
+  "api": {
+    "explorer": true,
+    "explorerPath": "/explorer"
+  },
+  "database": {
+    "type": "postgres",
+    "host": "localhost",
+    "port": 5432,
+    "database": "nest-workflow",
+    "poolMax": 10,
+    "ssl": false
+  },
+  "aws": {
+    "region": "us-west-2",
+    "s3": {
+      "apiVersion": "2006-03-01",
+      "bucket": "nest-workflow-development",
+      "endpoint": "http://localhost:5000",
+      "s3ForcePathStyle": true,
+      "useAccelerateEndpoint": true
+    }
+  }
+}

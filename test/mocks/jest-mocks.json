@@ -1,0 +1,9 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "moduleDirectories": ["node_modules", "<rootDir>/src", "src"],
+  "rootDir": ".",
+  "testRegex": ".load.ts$",
+  "transform": {
+    "^.+\\.(t|j)s$": "ts-jest"
+  }
+}
