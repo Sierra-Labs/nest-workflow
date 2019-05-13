@@ -229,6 +229,7 @@ export class ViewService {
     let viewTemplateVersion = new ViewTemplateVersion();
     viewTemplateVersion.version = 1; // first version
     viewTemplateVersion.name = viewTemplateDto.name;
+    viewTemplateVersion.dataSourceType = viewTemplateDto.dataSourceType;
     viewTemplateVersion.createdBy = viewTemplateDto.createdBy;
     viewTemplateVersion.modifiedBy = viewTemplateDto.modifiedBy;
 
@@ -288,6 +289,9 @@ export class ViewService {
     }
     if (viewTemplateDto.name) {
       viewTemplateVersion.name = viewTemplateDto.name;
+    }
+    if (viewTemplateDto.dataSourceType) {
+      viewTemplateVersion.dataSourceType = viewTemplateDto.dataSourceType;
     }
     viewTemplateVersion.nodeSchemaVersionId =
       viewTemplateDto.nodeSchemaVersionId;

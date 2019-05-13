@@ -1,5 +1,6 @@
 import { User } from '../entities/user.entity';
 import { NodeSchemaDto } from '../node/node-schema.dto';
+import { ViewDataSourceType } from '../entities';
 
 export class ViewTemplateDto {
   id?: string;
@@ -7,6 +8,7 @@ export class ViewTemplateDto {
   versionId?: string;
   version?: number;
   name: string;
+  dataSourceType: ViewDataSourceType;
   view?: any;
   viewMap?: Map<string, any>;
   nodeSchemaVersionId?: string;

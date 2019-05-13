@@ -15,6 +15,11 @@ import { NodeSchemaVersion } from './node-schema-version.entity';
 import { User } from './user.entity';
 import { ViewTemplate } from './view-template.entity';
 
+export enum ViewDataSourceType {
+  Custom = 'custom',
+  Node = 'node',
+  Query = 'query',
+}
 @Entity()
 @Unique(['viewTemplateId', 'version'])
 export class ViewTemplateVersion {
@@ -38,6 +43,10 @@ export class ViewTemplateVersion {
   @ApiModelProperty()
   @Column('text')
   name: string;
+
+  @ApiModelProperty()
+  @Column('text', { default: 'custom' })
+  dataSourceType: ViewDataSourceType;
 
   @ApiModelProperty()
   @Column('text', {
