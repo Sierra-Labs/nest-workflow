@@ -10,6 +10,7 @@ import { FindNodeSchemaDto, NodeSchemaDto } from './node-schema.dto';
 
 import { plainToClass } from 'class-transformer';
 import { Attribute } from '../entities/attribute.entity';
+import { User } from '../entities/user.entity';
 
 @Injectable()
 export class NodeSchemaService {
@@ -138,6 +139,9 @@ export class NodeSchemaService {
       })
       .orderBy('attribute.position', 'ASC')
       .getOne();
+    if (!nodeSchemaVersion) {
+      return;
+    }
     return this.mapToNodeSchemaDto(nodeSchemaVersion);
   }
 
@@ -151,12 +155,25 @@ export class NodeSchemaService {
   }
 
   public async create(nodeSchemaDto: NodeSchemaDto): Promise<NodeSchemaDto> {
+    if (
+      nodeSchemaDto.versionId &&
+      (await this.findVersionById(
+        nodeSchemaDto.organizationId,
+        nodeSchemaDto.versionId,
+      ))
+    ) {
+      throw new BadRequestException(
+        'Node schema already exists with versionId',
+      );
+    }
     let nodeSchema = new NodeSchema();
+    nodeSchema.id = nodeSchemaDto.id;
     nodeSchema.organizationId = nodeSchemaDto.organizationId;
     nodeSchema.createdBy = nodeSchemaDto.createdBy;
     nodeSchema.modifiedBy = nodeSchemaDto.modifiedBy;
 
     let nodeSchemaVersion = new NodeSchemaVersion();
+    nodeSchemaVersion.id = nodeSchemaDto.versionId;
     nodeSchemaVersion.version = 1; // first version
     nodeSchemaVersion.name = nodeSchemaDto.name;
     nodeSchemaVersion.type = nodeSchemaDto.type;
@@ -171,6 +188,14 @@ export class NodeSchemaService {
         nodeSchemaVersion,
       );
       nodeSchemaVersion.nodeSchema = nodeSchema;
+      if (nodeSchemaDto.attributes) {
+        await this.upsertAttributes(
+          transactionalEntityManager,
+          nodeSchemaDto.modifiedBy,
+          nodeSchemaVersion.id,
+          nodeSchemaDto.attributes,
+        );
+      }
     });
     return this.findVersionById(
       nodeSchema.organizationId,
@@ -204,18 +229,12 @@ export class NodeSchemaService {
     await this.entityManager.transaction(async transactionalEntityManager => {
       await transactionalEntityManager.save(nodeSchemaVersion);
       if (nodeSchemaDto.attributes) {
-        for (const attributeJson of nodeSchemaDto.attributes) {
-          const attribute = plainToClass(Attribute, attributeJson);
-          attribute.nodeSchemaVersionId = nodeSchemaVersion.id;
-          attribute.referenceType = attribute.options.referenceType;
-          attribute.referencedNodeSchemaVersionId =
-            attribute.options.nodeSchemaVersionId;
-          if (!attribute.id) {
-            attribute.createdBy = nodeSchemaDto.modifiedBy;
-          }
-          attribute.modifiedBy = nodeSchemaDto.modifiedBy;
-          await transactionalEntityManager.save(attribute);
-        }
+        await this.upsertAttributes(
+          transactionalEntityManager,
+          nodeSchemaDto.modifiedBy,
+          nodeSchemaVersion.id,
+          nodeSchemaDto.attributes,
+        );
       }
       if (nodeSchemaDto.removedAttributes) {
         for (const attributeJson of nodeSchemaDto.removedAttributes) {
@@ -234,5 +253,26 @@ export class NodeSchemaService {
       nodeSchemaDto.organizationId,
       nodeSchemaDto.versionId,
     );
+  }
+
+  public async upsertAttributes(
+    transactionalEntityManager: EntityManager,
+    user: User,
+    nodeSchemaVersionId: string,
+    attributes: any[],
+  ) {
+    for (const attributeJson of attributes) {
+      const attribute = plainToClass(Attribute, attributeJson);
+      attribute.nodeSchemaVersionId = nodeSchemaVersionId;
+      attribute.referenceType = attribute.options.referenceType;
+      attribute.referencedNodeSchemaVersionId =
+        attribute.options.nodeSchemaVersionId;
+      if (!attribute.id || !attribute.createdBy) {
+        // attribute.createdBy needed when importing
+        attribute.createdBy = user;
+      }
+      attribute.modifiedBy = user;
+      await transactionalEntityManager.save(attribute);
+    }
   }
 }
