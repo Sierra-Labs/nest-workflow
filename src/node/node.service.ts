@@ -1,5 +1,10 @@
 import * as _ from 'lodash';
-import { EntityManager, Repository } from 'typeorm';
+import {
+  EntityManager,
+  Repository,
+  SelectQueryBuilder,
+  Brackets,
+} from 'typeorm';
 
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -10,7 +15,25 @@ import { Node } from '../entities/node.entity';
 import { AttributeService } from './attributes/attribute.service';
 import { SequenceAttributeService } from './attributes/sequence-attribute.service';
 import { NodeDto, AttributeValueDto } from './node.dto';
-import { Attribute } from '../entities/attribute.entity';
+
+export interface NodeAttributeWhereClause {
+  [attributeName: string]: string;
+}
+
+/**
+ * Sort order for find call
+ * { firstName: 'ASC', id: 'DESC' }
+ */
+export interface NodeAttributeOrderClause {
+  [attributeName: string]: 'ASC' | 'DESC';
+}
+
+export interface NodeFindOptions {
+  search?: string; // search all attributes
+  relations?: string[]; // TODO: join based on relationship fields
+  order: NodeAttributeOrderClause;
+  where: NodeAttributeWhereClause | NodeAttributeWhereClause[];
+}
 
 @Injectable()
 export class NodeService {
@@ -26,10 +49,9 @@ export class NodeService {
   public async find(
     nodeSchemaId: string,
     organizationId: number,
-    order: any,
     limit: number = 100,
     offset: number = 0,
-    search: string,
+    options: NodeFindOptions,
     includeDeleted?: boolean,
   ): Promise<[Node[], number]> {
     // TODO: need to figure out how to handle node schema versions
@@ -38,19 +60,80 @@ export class NodeService {
 
     // TODO: Implement order, limit, offset, search
 
-    return this.nodeRepository
+    const query = this.nodeRepository
       .createQueryBuilder('node')
       .leftJoinAndSelect('node.attributeValues', 'attributeValue')
       .leftJoinAndSelect('attributeValue.attribute', 'attribute')
       .innerJoin('node.nodeSchemaVersion', 'nodeSchemaVersion')
       .innerJoin('nodeSchemaVersion.nodeSchema', 'nodeSchema')
+      .innerJoin(
+        subQuery => {
+          subQuery
+            .from(Node, 'node')
+            .select('"node"."id"')
+            .innerJoin('node.attributeValues', 'attributeValue')
+            .innerJoin('attributeValue.attribute', 'attribute')
+            .innerJoin('node.nodeSchemaVersion', 'nodeSchemaVersion')
+            .innerJoin('nodeSchemaVersion.nodeSchema', 'nodeSchema')
+            .where('"nodeSchemaVersion".node_schema_id = :nodeSchemaId', {
+              nodeSchemaId,
+            });
+          if (options) {
+            if (options.where) {
+              if (options.where instanceof Array) {
+                // TODO: implement OR logic
+                // subQuery.andWhere(new Brackets(bracketQuery => {
+                //   bracketQuery.orWhere()
+                // }));
+                // for (const where of options.where) {
+                //   subQuery.andWhere('"attribute"."name" = :name', {});
+                // }
+              } else {
+                this.addAttributeWhere(subQuery, options.where);
+              }
+            }
+            if (options.search) {
+              subQuery.andWhere('"attributeValue"."text_value" LIKE :search', {
+                search: `%${options.search}%`,
+              });
+            }
+          }
+          // .andwhere('"attribute"."name" ');
+          return subQuery;
+        },
+        'node_sub',
+        'node_sub."id" = node."id"',
+      )
       .where('"nodeSchema".organization_id = :organizationId', {
         organizationId,
       })
       .andWhere('"nodeSchemaVersion".node_schema_id = :nodeSchemaId', {
         nodeSchemaId,
-      })
-      .getManyAndCount();
+      });
+    // TODO: implement order by
+    // if (options && options.order) {
+    //   const keys = Object.keys(query.orderBy);
+    //   keys.forEach((key, index) => {
+    //     const orderString = '"attribute"."name"';
+    //     if (index === 0) {
+    //       query.orderBy();
+    //     }
+    //   });
+    // }
+    return query.getManyAndCount();
+  }
+
+  public async addAttributeWhere(
+    query: SelectQueryBuilder<any>,
+    attributeWhereClause: NodeAttributeWhereClause,
+  ) {
+    const keys = Object.keys(attributeWhereClause);
+    for (const key of keys) {
+      query.andWhere('"attribute"."name" = :key', { key });
+      query.andWhere('"attributeValue"."text_value" = :value', {
+        value: attributeWhereClause[key],
+      });
+    }
   }
 
   public async findById(organizationId: number, nodeId: string): Promise<Node> {

@@ -17,6 +17,7 @@ import {
   ConfigService,
   ParseBooleanPipe,
   RequiredPipe,
+  ParseEntityPipe,
 } from '@sierralabs/nest-utils';
 
 import { NodeSchemaVersion } from '../entities/node-schema-version.entity';
@@ -24,7 +25,7 @@ import { NodeSchema } from '../entities/node-schema.entity';
 import { Node } from '../entities/node.entity';
 import { FindNodeSchemaDto, NodeSchemaDto } from './node-schema.dto';
 import { NodeSchemaService } from './node-schema.service';
-import { NodeService } from './node.service';
+import { NodeService, NodeFindOptions } from './node.service';
 
 @ApiUseTags('Node Schemas')
 @Controller('node-schemas')
@@ -93,10 +94,9 @@ export class NodeSchemaController {
 
   @Roles(RolesType.$authenticated)
   @ApiOperation({ title: 'Get nodes for a node schema' })
-  @ApiImplicitQuery({ name: 'search', required: false })
+  @ApiImplicitQuery({ name: 'options', required: false })
   @ApiImplicitQuery({ name: 'page', required: false })
   @ApiImplicitQuery({ name: 'limit', required: false })
-  @ApiImplicitQuery({ name: 'order', required: false })
   @ApiImplicitQuery({ name: 'includeDeleted', required: false })
   @Get(':nodeSchemaId/nodes')
   findNodesByNodeSchemaId(
@@ -104,8 +104,7 @@ export class NodeSchemaController {
     @Param('nodeSchemaId', new RequiredPipe()) nodeSchemaId: string,
     @Query('page') page?: number,
     @Query('limit') limit?: number,
-    @Query('order') order?: string,
-    @Query('search') search?: string,
+    @Query('options') options?: NodeFindOptions | string,
     @Query('includeDeleted', new ParseBooleanPipe()) includeDeleted?: boolean,
   ): Promise<[Node[], number]> {
     const activeOrganization = request.user.activeOrganization;
@@ -120,33 +119,12 @@ export class NodeSchemaController {
     limit = Math.min(maxSize, limit || defaultSize);
     const offset = (page || 0) * limit;
 
-    const orderOptions = [
-      // 'id asc',
-      // 'id desc',
-      // 'name asc',
-      // 'name desc',
-      // 'type asc',
-      // 'type desc',
-      // 'created asc',
-      // 'created desc',
-      // 'modified asc',
-      // 'modified desc',
-    ];
-
-    if (orderOptions.indexOf(order) === -1) {
-      order = 'id asc';
-    }
-    const orderParts = order.split(' ');
-    const orderConfig = {};
-    orderConfig[orderParts[0]] = orderParts[1].toUpperCase();
-
     return this.nodeService.find(
       nodeSchemaId,
       activeOrganization.id,
-      orderConfig,
       limit,
       offset,
-      '%' + (search || '') + '%',
+      options ? (JSON.parse(options as string) as NodeFindOptions) : undefined,
       includeDeleted,
     );
   }
