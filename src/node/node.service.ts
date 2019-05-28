@@ -58,10 +58,12 @@ export class NodeService {
     // -- the attributeIds for attribute values would be different from version to version
     // -- list views that have different node versions currently only accept most recent versions
 
-    // TODO: Implement order, limit, offset, search
+    // TODO: Implement order, search
 
     const query = this.nodeRepository
       .createQueryBuilder('node')
+      .take(limit)
+      .skip(offset)
       .leftJoinAndSelect('node.attributeValues', 'attributeValue')
       .leftJoinAndSelect('attributeValue.attribute', 'attribute')
       .innerJoin('node.nodeSchemaVersion', 'nodeSchemaVersion')
