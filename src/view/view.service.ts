@@ -10,6 +10,7 @@ import { ViewTemplate } from '../entities/view-template.entity';
 import { FindViewTemplateDto, ViewTemplateDto } from './view.dto';
 import { NodeSchemaDto } from '../node/node-schema.dto';
 import { User } from '../entities/user.entity';
+import { NodeSchemaService } from '../node';
 
 @Injectable()
 export class ViewService {
@@ -25,6 +26,7 @@ export class ViewService {
     protected readonly viewTemplateVersionRepository: Repository<
       ViewTemplateVersion
     >,
+    protected readonly nodeSchemaService: NodeSchemaService,
     protected readonly configService: ConfigService,
   ) {
     const config = configService.get('aws');
@@ -114,6 +116,16 @@ export class ViewService {
         'attribute',
         '"attribute".is_deleted = false',
       )
+      // Add the back references from relationships
+      .leftJoinAndSelect(
+        'nodeSchemaVersion.attributeBackReferences',
+        'attributeBackReferences',
+        '"attributeBackReferences".is_deleted = false',
+      )
+      .leftJoinAndSelect(
+        'attributeBackReferences.nodeSchemaVersion',
+        'attributeBackReferenceNodeSchemaVersion',
+      )
       .where('view.organization_id = :organizationId', { organizationId })
       .andWhere('view.id = :viewId', { viewId })
       .orderBy('"attribute".position', 'ASC')
@@ -140,6 +152,16 @@ export class ViewService {
         'attribute',
         '"attribute".is_deleted = false',
       )
+      // Add the back references from relationships
+      .leftJoinAndSelect(
+        'nodeSchemaVersion.attributeBackReferences',
+        'attributeBackReferences',
+        '"attributeBackReferences".is_deleted = false',
+      )
+      .leftJoinAndSelect(
+        'attributeBackReferences.nodeSchemaVersion',
+        'attributeBackReferenceNodeSchemaVersion',
+      )
       .where('"viewTemplate".organization_id = :organizationId', {
         organizationId,
       })
@@ -165,16 +187,15 @@ export class ViewService {
     delete viewTemplateVersion.viewTemplateId;
 
     // clean up node schema with correct id property names according to DTO
-    const nodeSchemaDto: NodeSchemaDto = viewTemplateVersion.nodeSchemaVersion;
     if (viewTemplateVersion.nodeSchemaVersion) {
-      nodeSchemaDto.versionId = viewTemplateVersion.nodeSchemaVersion.id;
-      nodeSchemaDto.id = viewTemplateVersion.nodeSchemaVersion.nodeSchemaId;
+      const nodeSchemaDto = this.nodeSchemaService.mapToNodeSchemaDto(
+        viewTemplateVersion.nodeSchemaVersion,
+      );
+      // remove the nodeSchemaVersion from view template since we'll be replacing
+      // with nodeSchemaDto
+      delete viewTemplateVersion.nodeSchemaVersion;
+      viewTemplateDto.nodeSchema = nodeSchemaDto;
     }
-
-    // remove the nodeSchemaVersion from view template since we'll be replacing
-    // with nodeSchemaDto
-    delete viewTemplateVersion.nodeSchemaVersion;
-    viewTemplateDto.nodeSchema = nodeSchemaDto;
 
     // get view template from S3
     if (viewTemplateVersion && viewTemplateVersion.templateUrl) {

@@ -102,6 +102,16 @@ export class NodeSchemaService {
         'attribute',
         '"attribute".is_deleted = false',
       )
+      // Add the back references from relationships
+      .leftJoinAndSelect(
+        'nodeSchemaVersion.attributeBackReferences',
+        'attributeBackReferences',
+        '"attributeBackReferences".is_deleted = false',
+      )
+      .leftJoinAndSelect(
+        'attributeBackReferences.nodeSchemaVersion',
+        'attributeBackReferenceNodeSchemaVersion',
+      )
       .where('nodeSchema.organization_id = :organizationId', { organizationId })
       .andWhere('nodeSchema.id = :nodeSchemaId', { nodeSchemaId })
       .orderBy('attribute.position', 'ASC')
@@ -262,6 +272,10 @@ export class NodeSchemaService {
     attributes: any[],
   ) {
     for (const attributeJson of attributes) {
+      if (attributeJson.isBackReference) {
+        // ignore back reference attributes since it was auto generated
+        continue;
+      }
       const attribute = plainToClass(Attribute, attributeJson);
       attribute.nodeSchemaVersionId = nodeSchemaVersionId;
       attribute.referenceType = attribute.options.referenceType;

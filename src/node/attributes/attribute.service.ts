@@ -27,13 +27,18 @@ export class AttributeService {
       attributeValue = _.find(node.attributeValues, {
         id: attributeValueDto.id,
       });
-      if (!attributeValue) {
+      if (attributeValue && attributeValue.nodeId !== node.id) {
         throw new BadRequestException(
-          'Attempt to update an attribute that does not exist in the node.',
+          `Attempt to update an attribute value (${
+            attributeValue.id
+          }) that is not associated to the node (${node.id}).`,
         );
       }
-    } else {
+    }
+    if (!attributeValue) {
       attributeValue = new AttributeValue();
+      // client side level generate Ids due to reference nodes
+      attributeValue.id = attributeValueDto.id;
       attributeValue.createdBy = node.modifiedBy;
     }
     attributeValue.nodeId = node.id;

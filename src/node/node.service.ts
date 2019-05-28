@@ -129,30 +129,52 @@ export class NodeService {
   ) {
     const keys = Object.keys(attributeWhereClause);
     for (const key of keys) {
-      query.andWhere('"attribute"."name" = :key', { key });
-      query.andWhere('"attributeValue"."text_value" = :value', {
-        value: attributeWhereClause[key],
-      });
+      if (key === 'referenceNodeId') {
+        query.andWhere('"attributeValue"."reference_node_id" = :value', {
+          value: attributeWhereClause.referenceNodeId,
+        });
+      } else {
+        query.andWhere('"attribute"."name" = :key', { key });
+        query.andWhere('"attributeValue"."text_value" = :value', {
+          value: attributeWhereClause[key],
+        });
+      }
     }
   }
 
   public async findById(organizationId: number, nodeId: string): Promise<Node> {
-    return this.nodeRepository
-      .createQueryBuilder('node')
-      .innerJoinAndSelect('node.nodeSchemaVersion', 'nodeSchemaVersion')
-      .leftJoinAndSelect(
-        'nodeSchemaVersion.attributes',
-        'attributes',
-        '"attributes".is_deleted = false',
-      )
-      .leftJoinAndSelect('node.attributeValues', 'attributeValue')
-      .leftJoinAndSelect('attributeValue.attribute', 'attribute')
-      .innerJoin('nodeSchemaVersion.nodeSchema', 'nodeSchema')
-      .where('"nodeSchema".organization_id = :organizationId', {
-        organizationId,
-      })
-      .andWhere('"node".id = :nodeId', { nodeId })
-      .getOne();
+    return (
+      this.nodeRepository
+        .createQueryBuilder('node')
+        .innerJoinAndSelect('node.nodeSchemaVersion', 'nodeSchemaVersion')
+        .leftJoinAndSelect(
+          'nodeSchemaVersion.attributes',
+          'attributes',
+          '"attributes".is_deleted = false',
+        )
+        .leftJoinAndSelect('node.attributeValues', 'attributeValue')
+        .leftJoinAndSelect(
+          'attributeValue.attribute',
+          'attribute',
+          '"attribute".is_deleted = false',
+        )
+        .innerJoin('nodeSchemaVersion.nodeSchema', 'nodeSchema')
+        // Add the back references from relationships
+        .leftJoinAndSelect(
+          'nodeSchemaVersion.attributeBackReferences',
+          'attributeBackReferences',
+          '"attributeBackReferences".is_deleted = false',
+        )
+        .leftJoinAndSelect(
+          'attributeBackReferences.nodeSchemaVersion',
+          'attributeBackReferenceNodeSchemaVersion',
+        )
+        .where('"nodeSchema".organization_id = :organizationId', {
+          organizationId,
+        })
+        .andWhere('"node".id = :nodeId', { nodeId })
+        .getOne()
+    );
   }
 
   public async create(nodeDto: NodeDto): Promise<Node> {
@@ -194,6 +216,12 @@ export class NodeService {
         node,
         nodeDto.attributeValues,
       );
+      await this.upsertBackReferences(
+        transactionalEntityManager,
+        nodeDto,
+        node,
+        nodeDto.attributeValues,
+      );
     });
     return this.findById(nodeDto.organizationId, node.id);
   }
@@ -219,6 +247,12 @@ export class NodeService {
         node,
         nodeDto.attributeValues,
       );
+      await this.upsertBackReferences(
+        transactionalEntityManager,
+        nodeDto,
+        node,
+        nodeDto.attributeValues,
+      );
     });
     return this.findById(nodeDto.organizationId, node.id);
   }
@@ -239,6 +273,7 @@ export class NodeService {
             // sequence generates attribute values so pass in the attribute id only
             { attributeId: attribute.id },
           );
+          break;
         default:
           // some attributes can have one or more attribute values (so filter)
           const filteredAttributeValueDtos = _.filter(attributeValueDtos, {
@@ -266,6 +301,12 @@ export class NodeService {
             );
           } else {
             for (const attributeValueDto of filteredAttributeValueDtos) {
+              // if (attribute.type === 'reference') {
+              //   console.log(
+              //     'upsertAttributeValues() attributeValueDto.referenceNode',
+              //     attributeValueDto.referenceId,
+              //   );
+              // }
               // Some attribute types have their own upserts
               await this.attributeService.upsertAttributeValue(
                 transactionalEntityManager,
@@ -274,6 +315,47 @@ export class NodeService {
               );
             }
           }
+      }
+    }
+  }
+
+  protected async upsertBackReferences(
+    transactionalEntityManager: EntityManager,
+    nodeDto: NodeDto,
+    node: Node,
+    attributeValueDtos: AttributeValueDto[],
+  ) {
+    if (!node.nodeSchemaVersion.attributeBackReferences) {
+      return;
+    }
+    // console.log(
+    //   'node.nodeSchemaVersion.attributeBackReferences',
+    //   node.nodeSchemaVersion.attributeBackReferences,
+    // );
+    for (const attribute of node.nodeSchemaVersion.attributeBackReferences) {
+      // console.log('processing back references attribute', attribute);
+      const filteredAttributeValueDtos = _.filter(attributeValueDtos, {
+        attributeId: attribute.id,
+      });
+      // console.log(
+      //   'found back references attribute value: ',
+      //   filteredAttributeValueDtos,
+      // );
+      for (const attributeValueDto of filteredAttributeValueDtos) {
+        // console.log(
+        //   'attributeValueDto.referenceNode',
+        //   attributeValueDto.referenceNode,
+        // );
+        attributeValueDto.referenceNode.organizationId = nodeDto.organizationId;
+        attributeValueDto.referenceNode.versionId =
+          attributeValueDto.referenceNode.nodeSchemaVersionId;
+        attributeValueDto.referenceNode.modifiedBy = nodeDto.modifiedBy;
+        if (attributeValueDto.referenceNode.id) {
+          await this.update(attributeValueDto.referenceNode);
+        } else {
+          attributeValueDto.referenceNode.createdBy = nodeDto.modifiedBy;
+          await this.create(attributeValueDto.referenceNode);
+        }
       }
     }
   }

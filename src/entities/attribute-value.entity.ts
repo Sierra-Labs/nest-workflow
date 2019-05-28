@@ -13,6 +13,7 @@ import { ApiModelProperty, ApiModelPropertyOptional } from '@nestjs/swagger';
 import { Attribute } from './attribute.entity';
 import { Node } from './node.entity';
 import { User } from './user.entity';
+import { ColumnNumericTransformer } from '@sierralabs/nest-utils';
 
 @Entity()
 export class AttributeValue {
@@ -55,6 +56,7 @@ export class AttributeValue {
     precision: 15,
     scale: 5,
     nullable: true,
+    transformer: new ColumnNumericTransformer(),
     comment:
       'Depending on `attribute.type` the attribute value maybe stored as a numeric value.',
   })
