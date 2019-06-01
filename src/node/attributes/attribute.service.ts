@@ -50,6 +50,8 @@ export class AttributeService {
     attributeValue.jsonValue = attributeValueDto.jsonValue;
     attributeValue.referenceNodeId = attributeValueDto.referenceNodeId;
     attributeValue.modifiedBy = node.modifiedBy;
+    attributeValue.isDeleted = attributeValueDto.isDeleted;
+    // TODO: check for if more than one attribute value is being added (i.e. in attribute reference situation)
     attributeValue = await transactionalEntityManager.save(attributeValue);
     // createa log entry for the attribute value
     await this.createAttributeValueLog(
@@ -72,6 +74,7 @@ export class AttributeService {
     attributeValueLog.jsonValue = attributeValue.jsonValue;
     attributeValueLog.referenceNodeId = attributeValue.referenceNodeId;
     attributeValueLog.createdBy = attributeValue.modifiedBy;
+    attributeValueLog.isDeleted = attributeValue.isDeleted;
     return transactionalEntityManager.save(attributeValueLog);
   }
 }

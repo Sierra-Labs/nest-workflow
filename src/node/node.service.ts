@@ -64,8 +64,16 @@ export class NodeService {
       .createQueryBuilder('node')
       .take(limit)
       .skip(offset)
-      .leftJoinAndSelect('node.attributeValues', 'attributeValue')
-      .leftJoinAndSelect('attributeValue.attribute', 'attribute')
+      .leftJoinAndSelect(
+        'node.attributeValues',
+        'attributeValue',
+        '"attributeValue".is_deleted = false',
+      )
+      .leftJoinAndSelect(
+        'attributeValue.attribute',
+        'attribute',
+        '"attribute".is_deleted = false',
+      )
       .innerJoin('node.nodeSchemaVersion', 'nodeSchemaVersion')
       .innerJoin('nodeSchemaVersion.nodeSchema', 'nodeSchema')
       .innerJoin(
@@ -73,8 +81,8 @@ export class NodeService {
           subQuery
             .from(Node, 'node')
             .select('"node"."id"')
-            .innerJoin('node.attributeValues', 'attributeValue')
-            .innerJoin('attributeValue.attribute', 'attribute')
+            .leftJoin('node.attributeValues', 'attributeValue')
+            .leftJoin('attributeValue.attribute', 'attribute')
             .innerJoin('node.nodeSchemaVersion', 'nodeSchemaVersion')
             .innerJoin('nodeSchemaVersion.nodeSchema', 'nodeSchema')
             .where('"nodeSchemaVersion".node_schema_id = :nodeSchemaId', {
@@ -158,7 +166,7 @@ export class NodeService {
         .leftJoinAndSelect(
           'attributeValue.attribute',
           'attribute',
-          '"attribute".is_deleted = false',
+          '"attributeValue".is_deleted = false AND "attribute".is_deleted = false',
         )
         .innerJoin('nodeSchemaVersion.nodeSchema', 'nodeSchema')
         // Add the back references from relationships
@@ -198,11 +206,6 @@ export class NodeService {
     if (!nodeSchemaVersion) {
       throw new BadRequestException('Node Schema not found.');
     }
-    if (!nodeDto.attributeValues || nodeDto.attributeValues.length === 0) {
-      throw new BadRequestException(
-        'At least one Attribute Value must be provided.',
-      );
-    }
     let node = new Node();
     node.nodeSchemaVersionId = nodeDto.versionId;
     node.createdBy = nodeDto.createdBy;
@@ -216,13 +219,13 @@ export class NodeService {
       await this.upsertAttributeValues(
         transactionalEntityManager,
         node,
-        nodeDto.attributeValues,
+        nodeDto.attributeValues || [],
       );
       await this.upsertBackReferences(
         transactionalEntityManager,
         nodeDto,
         node,
-        nodeDto.attributeValues,
+        nodeDto.attributeValues || [],
       );
     });
     return this.findById(nodeDto.organizationId, node.id);
@@ -233,11 +236,6 @@ export class NodeService {
     if (!node) {
       throw new BadRequestException('Node not found.');
     }
-    if (!nodeDto.attributeValues || nodeDto.attributeValues.length === 0) {
-      throw new BadRequestException(
-        'At least one Attribute Value must be provided.',
-      );
-    }
     // updated modified by
     node.modifiedBy = nodeDto.modifiedBy;
 
@@ -247,13 +245,13 @@ export class NodeService {
       await this.upsertAttributeValues(
         transactionalEntityManager,
         node,
-        nodeDto.attributeValues,
+        nodeDto.attributeValues || [],
       );
       await this.upsertBackReferences(
         transactionalEntityManager,
         nodeDto,
         node,
-        nodeDto.attributeValues,
+        nodeDto.attributeValues || [],
       );
     });
     return this.findById(nodeDto.organizationId, node.id);

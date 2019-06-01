@@ -9,6 +9,7 @@ export class AttributeValueDto {
   timeValue?: string;
   jsonValue?: any;
   referenceNodeId?: string;
+  isDeleted?: boolean;
 }
 
 export class NodeDto {

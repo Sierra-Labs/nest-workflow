@@ -81,6 +81,9 @@ export class AttributeValueLog {
   @JoinColumn({ name: 'reference_node_id' })
   referenceNode: Node;
 
+  @Column('boolean', { default: false, select: false })
+  isDeleted: boolean;
+
   @CreateDateColumn({ select: false })
   created: Date;
 
