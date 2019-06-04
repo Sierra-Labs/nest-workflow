@@ -29,10 +29,13 @@ export interface NodeAttributeOrderClause {
 }
 
 export interface NodeFindOptions {
+  nodeId?: string;
   search?: string; // search all attributes
   relations?: string[]; // TODO: join based on relationship fields
-  order: NodeAttributeOrderClause;
-  where: NodeAttributeWhereClause | NodeAttributeWhereClause[];
+  page?: number;
+  limit?: number;
+  order?: NodeAttributeOrderClause;
+  where?: NodeAttributeWhereClause | NodeAttributeWhereClause[];
 }
 
 @Injectable()
@@ -178,6 +181,23 @@ export class NodeService {
         .leftJoinAndSelect(
           'attributeBackReferences.nodeSchemaVersion',
           'attributeBackReferenceNodeSchemaVersion',
+        )
+        .leftJoinAndSelect(
+          'attributeBackReferenceNodeSchemaVersion.nodes',
+          'backReferenceNode',
+          `"backReferenceNode".is_deleted = false AND
+            EXISTS (SELECT 1 FROM "attribute_value" WHERE reference_node_id = :nodeId AND node_id = "backReferenceNode".id)`,
+          { nodeId },
+        )
+        .leftJoinAndSelect(
+          'backReferenceNode.attributeValues',
+          'backReferenceNodeAttributeValue',
+          '"backReferenceNodeAttributeValue".is_deleted = false',
+        )
+        .leftJoinAndSelect(
+          'backReferenceNodeAttributeValue.attribute',
+          'backReferenceNodeAttribute',
+          '"backReferenceNodeAttribute".is_deleted = false',
         )
         .where('"nodeSchema".organization_id = :organizationId', {
           organizationId,

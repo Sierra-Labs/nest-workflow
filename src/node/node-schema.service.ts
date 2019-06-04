@@ -119,6 +119,42 @@ export class NodeSchemaService {
     return this.mapToNodeSchemaDto(nodeSchema.publishedVersion);
   }
 
+  public async findByName(
+    organizationId: number,
+    nodeSchemaName: string,
+  ): Promise<NodeSchemaDto> {
+    const nodeSchemaVersion = await this.nodeSchemaVersionRepository
+      .createQueryBuilder('nodeSchemaVersion')
+      .leftJoinAndSelect('nodeSchemaVersion.nodeSchema', 'nodeSchema')
+      .leftJoinAndSelect(
+        'nodeSchemaVersion.attributes',
+        'attribute',
+        '"attribute".is_deleted = false',
+      )
+      // Add the back references from relationships
+      .leftJoinAndSelect(
+        'nodeSchemaVersion.attributeBackReferences',
+        'attributeBackReferences',
+        '"attributeBackReferences".is_deleted = false',
+      )
+      .leftJoinAndSelect(
+        'attributeBackReferences.nodeSchemaVersion',
+        'attributeBackReferenceNodeSchemaVersion',
+      )
+      .where('"nodeSchema".organization_id = :organizationId', {
+        organizationId,
+      })
+      .andWhere('"nodeSchemaVersion".name = :nodeSchemaName', {
+        nodeSchemaName,
+      })
+      .orderBy('attribute.position', 'ASC')
+      .getOne();
+    if (!nodeSchemaVersion) {
+      return;
+    }
+    return this.mapToNodeSchemaDto(nodeSchemaVersion);
+  }
+
   public async findVersionById(
     organizationId: number,
     nodeSchemaVersionId: string,
@@ -278,9 +314,10 @@ export class NodeSchemaService {
       }
       const attribute = plainToClass(Attribute, attributeJson);
       attribute.nodeSchemaVersionId = nodeSchemaVersionId;
-      attribute.referenceType = attribute.options.referenceType;
+      const referenceOptions = attribute.options;
+      attribute.referenceType = referenceOptions.referenceType;
       attribute.referencedNodeSchemaVersionId =
-        attribute.options.nodeSchemaVersionId;
+        referenceOptions.nodeSchemaVersionId;
       if (!attribute.id || !attribute.createdBy) {
         // attribute.createdBy needed when importing
         attribute.createdBy = user;

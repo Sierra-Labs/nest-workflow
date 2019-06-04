@@ -15,6 +15,7 @@ import { ApiModelProperty } from '@nestjs/swagger';
 import { NodeSchema } from './node-schema.entity';
 import { User } from './user.entity';
 import { Attribute } from './attribute.entity';
+import { Node } from './node.entity';
 
 @Entity()
 @Unique(['nodeSchemaId', 'version'])
@@ -43,6 +44,10 @@ export class NodeSchemaVersion {
   name: string;
 
   @ApiModelProperty()
+  @Column('text')
+  label: string;
+
+  @ApiModelProperty()
   @Column('text', { default: 'custom' })
   type: string; // TODO: turn into enum
 
@@ -58,6 +63,9 @@ export class NodeSchemaVersion {
     attribute => attribute.referencedNodeSchemaVersion,
   )
   attributeBackReferences: Attribute[];
+
+  @OneToMany(type => Node, node => node.nodeSchemaVersion)
+  nodes: Node[];
 
   @CreateDateColumn({ select: false })
   created: Date;

@@ -162,6 +162,23 @@ export class NodeSchemaController {
   }
 
   @Roles('Admin')
+  @ApiOperation({ title: 'look up a node schema by name' })
+  @Get('search/:nodeSchemaName')
+  findByName(
+    @Req() request,
+    @Param('nodeSchemaName', new RequiredPipe()) nodeSchemaName: string,
+  ): Promise<NodeSchemaDto> {
+    const activeOrganization = request.user.activeOrganization;
+    if (!activeOrganization) {
+      throw new BadRequestException('no active organization specified.');
+    }
+    return this.nodeSchemaService.findByName(
+      activeOrganization.id,
+      nodeSchemaName,
+    );
+  }
+
+  @Roles('Admin')
   @ApiOperation({ title: 'Create a Node Schema' })
   @UseInterceptors(new OwnerInterceptor(['createdBy', 'modifiedBy'], true))
   @Post()

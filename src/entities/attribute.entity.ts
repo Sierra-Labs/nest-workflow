@@ -12,6 +12,8 @@ import { ApiModelProperty, ApiModelPropertyOptional } from '@nestjs/swagger';
 
 import { User } from './user.entity';
 import { NodeSchemaVersion } from './node-schema-version.entity';
+import { AttributeType } from '../node';
+
 
 @Entity()
 export class Attribute {
@@ -39,7 +41,7 @@ export class Attribute {
 
   @ApiModelProperty()
   @Column('text')
-  type: string; // TODO: turn into enum for text, number, select, radio, date, etc.
+  type: AttributeType;
 
   @ApiModelProperty()
   @Column('int', { default: 0 })

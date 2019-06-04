@@ -196,9 +196,9 @@ export class OrganizationService {
     organizationInvites: CreateOrganizationInviteDto[],
   ): Promise<boolean> {
     const userOrganization = _.find(user.userOrganizations, {
-      organization: { id: organizationId },
+      organization: { id: organizationId } as any,
       permission: OrganizationPermissionType.Admin,
-    });
+    }) as UserOrganization;
     if (!userOrganization) {
       throw new UnauthorizedException();
     }

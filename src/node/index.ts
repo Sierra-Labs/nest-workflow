@@ -1,4 +1,6 @@
 export * from './attributes';
+export * from './node-data.controller';
+export * from './node-data.service';
 export * from './node-schema.controller';
 export * from './node-schema.dto';
 export * from './node-schema.service';

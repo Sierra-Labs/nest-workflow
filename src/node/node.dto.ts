@@ -9,6 +9,7 @@ export class AttributeValueDto {
   timeValue?: string;
   jsonValue?: any;
   referenceNodeId?: string;
+  referenceNode?: NodeDto;
   isDeleted?: boolean;
 }
 
@@ -16,6 +17,7 @@ export class NodeDto {
   id?: string;
   organizationId?: number;
   versionId: string;
+  nodeSchemaVersionId?: string;
   attributeValues: AttributeValueDto[];
   createdBy?: User;
   modifiedBy?: User;
