@@ -32,6 +32,8 @@ export interface NodeFindOptions {
   nodeId?: string;
   search?: string; // search all attributes
   relations?: string[]; // TODO: join based on relationship fields
+  includeReferences?: boolean;
+  includeBackReferences?: boolean;
   page?: number;
   limit?: number;
   order?: NodeAttributeOrderClause;

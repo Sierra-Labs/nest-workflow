@@ -224,6 +224,7 @@ export class NodeSchemaService {
     let nodeSchemaVersion = new NodeSchemaVersion();
     nodeSchemaVersion.id = nodeSchemaDto.versionId;
     nodeSchemaVersion.version = 1; // first version
+    nodeSchemaVersion.label = nodeSchemaDto.label;
     nodeSchemaVersion.name = nodeSchemaDto.name;
     nodeSchemaVersion.type = nodeSchemaDto.type;
     nodeSchemaVersion.createdBy = nodeSchemaDto.createdBy;
@@ -270,6 +271,9 @@ export class NodeSchemaService {
     }
     if (nodeSchemaDto.name) {
       nodeSchemaVersion.name = nodeSchemaDto.name;
+    }
+    if (nodeSchemaDto.label) {
+      nodeSchemaVersion.label = nodeSchemaDto.label;
     }
     if (nodeSchemaDto.type) {
       nodeSchemaVersion.type = nodeSchemaDto.type;

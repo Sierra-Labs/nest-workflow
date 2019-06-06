@@ -5,6 +5,7 @@ export class NodeSchemaDto {
   organizationId?: number;
   versionId?: string;
   name: string;
+  label: string;
   type: string;
   attributes?: Attribute[];
   removedAttributes?: Attribute[];

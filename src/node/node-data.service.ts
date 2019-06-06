@@ -1,16 +1,11 @@
 import * as _ from 'lodash';
-import {
-  Brackets,
-  EntityManager,
-  Repository,
-  SelectQueryBuilder,
-} from 'typeorm';
+import { EntityManager, Repository, SelectQueryBuilder } from 'typeorm';
 
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@sierralabs/nest-utils';
 
-import { User } from '../entities';
+import { User, NodeSchema, AttributeValue } from '../entities';
 import { NodeSchemaVersion } from '../entities/node-schema-version.entity';
 import { Node } from '../entities/node.entity';
 import { AttributeType } from './attributes';
@@ -22,6 +17,8 @@ import {
   NodeFindOptions,
   NodeService,
 } from './node.service';
+import { NodeSchemaService } from './node-schema.service';
+import { NodeSchemaDto } from './node-schema.dto';
 
 export enum ReferenceType {
   OneToOne = 'one-to-one',
@@ -41,6 +38,7 @@ export class NodeDataService {
     protected readonly entityManager: EntityManager,
     @InjectRepository(Node)
     protected readonly nodeRepository: Repository<Node>,
+    protected readonly nodeSchemaService: NodeSchemaService,
     protected readonly nodeService: NodeService,
     protected readonly configService: ConfigService,
     protected readonly attributeService: AttributeService,
@@ -56,12 +54,21 @@ export class NodeDataService {
       options = {};
     }
     nodeSchemaName = _.camelCase(nodeSchemaName); // convert node schema name to camel case
+    // need to get the nodeSchema to access meta data when building the query
+    const nodeSchemaDto = await this.nodeSchemaService.findByName(
+      organizationId,
+      nodeSchemaName,
+    );
     const limit = options.limit || 100;
     const offset = (options.page || 0) * limit;
+    // first get the node and attribute values in the correct order
     const query = this.nodeRepository
       .createQueryBuilder('node')
       .take(limit)
       .skip(offset)
+      .select('node.id') // only get node id
+      .innerJoin('node.nodeSchemaVersion', 'nodeSchemaVersion')
+      .innerJoin('nodeSchemaVersion.nodeSchema', 'nodeSchema')
       // get node attributes
       .leftJoinAndSelect(
         'node.attributeValues',
@@ -72,19 +79,115 @@ export class NodeDataService {
         'attributeValue.attribute',
         'attribute',
         '"attribute".is_deleted = false',
+      );
+    this.addFindWhere(query, organizationId, nodeSchemaDto, options);
+
+    // console.log('node attribute value query: ', query.getSql());
+    const results = await query.getManyAndCount();
+    const nodes = results[0];
+    const totalCount = results[1];
+
+    // next get the the reference attribute node values
+    // (doing this in a second query so that results returned are not compounded)
+    let nodeReferences = [];
+    if (options.includeReferences) {
+      nodeReferences = await this.findNodeReferences(
+        organizationId,
+        nodeSchemaDto,
+        options,
+      );
+    }
+
+    // next get the the back reference attribute node values
+    // (doing this in a third query so that results returned are not compounded)
+    let nodeBackReferences = [];
+    if (options.includeBackReferences) {
+      nodeBackReferences = await this.findNodeBackReferences(
+        organizationId,
+        nodeSchemaDto,
+        options,
+      );
+    }
+
+    const normalizedNodes = [];
+    for (const node of nodes) {
+      // normalize the nodes and merge the reference nodes and back reference nodes
+      const nodeId = node.id;
+      const nodeDataDto = this.normalizeNodeAttributes(node);
+      const nodeWithReference = _.find(nodeReferences, { nodeId });
+      const nodeWithBackReference = _.find(nodeBackReferences, { nodeId });
+      if (nodeWithReference) {
+        Object.assign(nodeDataDto, nodeWithReference);
+      }
+      if (nodeWithBackReference) {
+        Object.assign(nodeDataDto, nodeWithBackReference);
+      }
+      normalizedNodes.push(nodeDataDto);
+    }
+    return [normalizedNodes, totalCount];
+  }
+
+  protected async findNodeReferences(
+    organizationId: number,
+    nodeSchemaDto: NodeSchemaDto,
+    options: NodeFindOptions,
+  ): Promise<NodeDataDto[]> {
+    const limit = options.limit || 100;
+    const offset = (options.page || 0) * limit;
+    const query = this.nodeRepository
+      .createQueryBuilder('node')
+      .take(limit)
+      .skip(offset)
+      .select('node.id') // only get node id
+      .innerJoin('node.nodeSchemaVersion', 'nodeSchemaVersion')
+      .innerJoin('nodeSchemaVersion.nodeSchema', 'nodeSchema')
+      .leftJoinAndSelect(
+        // make sure to consistently use leftJoin to match node results from find()
+        'node.attributeValues',
+        'attributeValue',
+        '"attributeValue".is_deleted = false',
+      )
+      .leftJoinAndSelect(
+        'attributeValue.attribute',
+        'attribute',
+        '"attribute".is_deleted = false',
       )
       // for attributes with reference nodes get the reference nodes
-      .leftJoinAndSelect('attributeValue.referenceNode', 'referenceNode')
-      .leftJoinAndSelect(
+      .innerJoinAndSelect('attributeValue.referenceNode', 'referenceNode')
+      .innerJoinAndSelect(
         'referenceNode.attributeValues',
         'referenceNodeAttributeValue',
         '"referenceNodeAttributeValue".is_deleted = false',
       )
-      .leftJoinAndSelect(
+      .innerJoinAndSelect(
         'referenceNodeAttributeValue.attribute',
         'referenceNodeAttribute',
         '"referenceNodeAttribute".is_deleted = false',
-      )
+      );
+    this.addFindWhere(query, organizationId, nodeSchemaDto, options);
+    // console.log('node with reference attributes query: ', query.getSql());
+    const nodes = await query.getMany();
+    const normalizedNodes = [];
+    for (const node of nodes) {
+      // normalize the nodes and merge the reference nodes and back reference nodes
+      const nodeDataDto = this.normalizeNodeAttributes(node);
+      normalizedNodes.push(nodeDataDto);
+    }
+    return normalizedNodes;
+  }
+
+  protected async findNodeBackReferences(
+    organizationId: number,
+    nodeSchemaDto: NodeSchemaDto,
+    options: NodeFindOptions,
+  ): Promise<NodeDataDto[]> {
+    const limit = options.limit || 100;
+    const offset = (options.page || 0) * limit;
+    const query = this.nodeRepository
+      .createQueryBuilder('node')
+      .take(limit)
+      .skip(offset)
+      .select('node.id') // only get node id
       // Get the node schema
       .innerJoinAndSelect('node.nodeSchemaVersion', 'nodeSchemaVersion')
       .innerJoin('nodeSchemaVersion.nodeSchema', 'nodeSchema')
@@ -102,7 +205,7 @@ export class NodeDataService {
         'attributeBackReferenceNodeSchemaVersion.nodes',
         'backReferenceNode',
         `"backReferenceNode".is_deleted = false AND
-        EXISTS (SELECT 1 FROM "attribute_value" WHERE reference_node_id = node."id" AND node_id = "backReferenceNode".id)`,
+      EXISTS (SELECT 1 FROM "attribute_value" WHERE reference_node_id = node."id" AND node_id = "backReferenceNode".id)`,
       )
       .leftJoinAndSelect(
         'backReferenceNode.attributeValues',
@@ -114,7 +217,24 @@ export class NodeDataService {
         'backReferenceNodeAttribute',
         '"backReferenceNodeAttribute".is_deleted = false',
       );
+    this.addFindWhere(query, organizationId, nodeSchemaDto, options);
+    // console.log('nodes with back references query: ', query.getSql());
+    const nodes = await query.getMany();
+    const normalizedNodes = [];
+    for (const node of nodes) {
+      // normalize the nodes and merge the reference nodes and back reference nodes
+      const nodeDataDto = this.normalizeNodeAttributes(node);
+      normalizedNodes.push(nodeDataDto);
+    }
+    return normalizedNodes;
+  }
 
+  protected async addFindWhere(
+    query: SelectQueryBuilder<any>,
+    organizationId: number,
+    nodeSchemaDto: NodeSchemaDto,
+    options: NodeFindOptions,
+  ) {
     if (options.nodeId) {
       query.where('"node"."id" = :nodeId', { nodeId: options.nodeId });
       query.andWhere('"nodeSchema".organization_id = :organizationId', {
@@ -125,14 +245,15 @@ export class NodeDataService {
         subQuery => {
           subQuery
             .from(Node, 'node')
-            .select('"node"."id"')
-            .leftJoin('node.attributeValues', 'attributeValue')
-            .leftJoin('attributeValue.attribute', 'attribute')
+            .select('DISTINCT "node"."id"')
             .innerJoin('node.nodeSchemaVersion', 'nodeSchemaVersion')
             .innerJoin('nodeSchemaVersion.nodeSchema', 'nodeSchema')
-            .where('"nodeSchemaVersion".name = :nodeSchemaName', {
-              nodeSchemaName,
+            .where('"nodeSchemaVersion".id = :versionId', {
+              versionId: nodeSchemaDto.versionId,
             });
+          if (options.order) {
+            this.addOrderFilter(query, nodeSchemaDto, options);
+          }
           if (options.where) {
             if (options.where instanceof Array) {
               // TODO: implement OR logic
@@ -147,11 +268,12 @@ export class NodeDataService {
             }
           }
           if (options.search) {
-            subQuery.andWhere('"attributeValue"."text_value" LIKE :search', {
-              search: `%${options.search}%`,
-            });
+            subQuery
+              // TODO: handle number_value, date_value, etc.
+              .andWhere('"attributeValue"."text_value" LIKE :search', {
+                search: `%${options.search}%`,
+              });
           }
-          // .andwhere('"attribute"."name" ');
           return subQuery;
         },
         'node_sub',
@@ -162,33 +284,22 @@ export class NodeDataService {
       });
     }
 
-    query.andWhere('"nodeSchemaVersion".name = :nodeSchemaName', {
-      nodeSchemaName,
+    query.andWhere('"nodeSchemaVersion".id = :versionId', {
+      versionId: nodeSchemaDto.versionId,
     });
-    // TODO: implement order by
-    // if (options && options.order) {
-    //   const keys = Object.keys(query.orderBy);
-    //   keys.forEach((key, index) => {
-    //     const orderString = '"attribute"."name"';
-    //     if (index === 0) {
-    //       query.orderBy();
-    //     }
-    //   });
-    // }
-    // console.log('query: ', query.getSql());
-    const results = await query.getManyAndCount();
-    const totalCount = results[1];
-    const normalizedNodes = [];
-    for (const node of results[0]) {
-      normalizedNodes.push(this.normalizeNodeAttributes(node));
-    }
-    return [normalizedNodes, totalCount];
   }
 
-  public async addAttributeWhere(
+  protected async addAttributeWhere(
     query: SelectQueryBuilder<any>,
     attributeWhereClause: NodeAttributeWhereClause,
   ) {
+    query
+      .innerJoin(
+        'node.attributeValues',
+        'attributeValue',
+        '"attributeValue".is_deleted = false',
+      )
+      .innerJoin('attributeValue.attribute', 'attribute');
     const keys = Object.keys(attributeWhereClause);
     for (const key of keys) {
       if (key === 'referenceNodeId') {
@@ -224,6 +335,82 @@ export class NodeDataService {
     }
   }
 
+  protected async addOrderFilter(
+    query: SelectQueryBuilder<any>,
+    nodeSchemaDto: NodeSchemaDto,
+    options: NodeFindOptions,
+  ) {
+    const keys = Object.keys(options.order);
+    for (const key of keys) {
+      const attribute = _.find(nodeSchemaDto.attributes, { name: key });
+      if (!attribute) {
+        continue;
+      }
+      // use subquery to get the sort column as left join since some nodes may not have
+      // an attribute value specified and thus we don't want the node to be filtered out
+      query.leftJoin(
+        subQuery => {
+          subQuery
+            .from(AttributeValue, 'attributeValue')
+            .select('"attributeValue"."node_id"')
+            .innerJoin('attributeValue.attribute', 'attribute');
+          // pivot the attribute value being sorted into a column
+          switch (attribute.type) {
+            case AttributeType.Boolean:
+              subQuery.addSelect(`(CASE WHEN "attribute"."type" = 'boolean'
+              THEN "attributeValue"."number_value" ELSE NULL END) as "sort_column"`);
+              break;
+            case AttributeType.DateTime:
+              // TODO: handle Time
+              subQuery.addSelect(`(CASE WHEN "attribute"."type" = 'datetime'
+              THEN "attributeValue"."date_value" ELSE NULL END) as "sort_column"`);
+              break;
+            case AttributeType.Enumeration:
+              subQuery.addSelect(`(CASE WHEN "attribute"."type" = 'enumeration'
+              THEN "attributeValue"."text_value" ELSE NULL END) as "sort_column"`);
+              break;
+            case AttributeType.File:
+              subQuery.addSelect(`(CASE WHEN "attribute"."type" = 'file'
+              THEN "attributeValue"."text_value" ELSE NULL END) as "sort_column"`);
+              break;
+            case AttributeType.List:
+              subQuery.addSelect(`'' as "sort_column"`);
+              break;
+            case AttributeType.Number:
+              subQuery.addSelect(`(CASE WHEN "attribute"."type" = 'number'
+              THEN "attributeValue"."number_value" ELSE NULL END) as "sort_column"`);
+              break;
+            case AttributeType.Reference:
+              subQuery.addSelect(`(CASE WHEN "attribute"."type" = 'reference'
+              THEN "attributeValue"."reference_node_id" ELSE NULL END) as "sort_column"`);
+              break;
+            case AttributeType.Sequence:
+              subQuery.addSelect(`(CASE WHEN "attribute"."type" = 'sequence'
+              THEN "attributeValue"."number_value" ELSE NULL END) as "sort_column"`);
+              break;
+            case AttributeType.Text:
+              subQuery.addSelect(`(CASE WHEN "attribute"."type" = 'text'
+              THEN "attributeValue"."text_value" ELSE NULL END) as "sort_column"`);
+              break;
+          }
+          // limit only one attribute (otherwise will cause redundant records to get returned)
+          subQuery
+            .where('"attribute"."name" = :key', { key })
+            .andWhere('"attributeValue".is_deleted = false');
+          return subQuery;
+        },
+        'attributeSort',
+        '"attributeSort"."node_id" = "node"."id"',
+      );
+      const direction =
+        options.order[key] && options.order[key].toUpperCase() === 'DESC'
+          ? 'DESC'
+          : 'ASC';
+      // finally add the order by clause
+      query.addSelect('sort_column').orderBy('sort_column', direction);
+    }
+  }
+
   public async findById(
     organizationId: number,
     nodeSchemaName: string,
@@ -235,33 +422,41 @@ export class NodeDataService {
 
   public normalizeNodeAttributes(node: Node): NodeDataDto {
     const nodeDataDto = { nodeId: node.id } as NodeDataDto;
-    for (const attributeValue of node.attributeValues) {
-      const fieldName = this.getAttributeValueFieldNameByType(
-        attributeValue.attribute.type,
-      );
-      if (attributeValue.attribute.type === AttributeType.Reference) {
-        if (!attributeValue.referenceNode) {
-          continue; // skip if no reference node exists
+    if (node.attributeValues) {
+      for (const attributeValue of node.attributeValues) {
+        if (!attributeValue.attribute) {
+          continue; // attribute may have been deleted
         }
-        const noramlizedReferenceNode = this.normalizeNodeAttributes(
-          attributeValue.referenceNode,
+        const fieldName = this.getAttributeValueFieldNameByType(
+          attributeValue.attribute.type,
         );
-        const attributeOptions = attributeValue.attribute.options;
-        if (
-          attributeOptions.referenceType === ReferenceType.ManyToMany ||
-          attributeOptions.referenceType === ReferenceType.OneToMany
-        ) {
-          if (!nodeDataDto[attributeValue.attribute.name]) {
-            nodeDataDto[attributeValue.attribute.name] = [];
+        if (attributeValue.attribute.type === AttributeType.Reference) {
+          if (!attributeValue.referenceNode) {
+            continue; // skip if no reference node exists
           }
-          nodeDataDto[attributeValue.attribute.name].push(
-            noramlizedReferenceNode,
+          const noramlizedReferenceNode = this.normalizeNodeAttributes(
+            attributeValue.referenceNode,
           );
+          const attributeOptions = attributeValue.attribute.options;
+          if (
+            attributeOptions.referenceType === ReferenceType.ManyToMany ||
+            attributeOptions.referenceType === ReferenceType.OneToMany
+          ) {
+            if (!nodeDataDto[attributeValue.attribute.name]) {
+              nodeDataDto[attributeValue.attribute.name] = [];
+            }
+            nodeDataDto[attributeValue.attribute.name].push(
+              noramlizedReferenceNode,
+            );
+          } else {
+            nodeDataDto[
+              attributeValue.attribute.name
+            ] = noramlizedReferenceNode;
+          }
         } else {
-          nodeDataDto[attributeValue.attribute.name] = noramlizedReferenceNode;
+          nodeDataDto[attributeValue.attribute.name] =
+            attributeValue[fieldName];
         }
-      } else {
-        nodeDataDto[attributeValue.attribute.name] = attributeValue[fieldName];
       }
     }
     // attribute back references
@@ -298,6 +493,7 @@ export class NodeDataService {
       case AttributeType.List:
         return 'jsonValue';
       case AttributeType.Number:
+      case AttributeType.Boolean:
         return 'numberValue';
       case AttributeType.Reference:
         return 'referenceNode';
@@ -429,6 +625,10 @@ export class NodeDataService {
             } else {
               attributeValueDto[fieldName] = value;
             }
+          }
+          if (!attributeValueDto.id && !value) {
+            // don't insert null values into database
+            continue;
           }
           await this.attributeService.upsertAttributeValue(
             transactionalEntityManager,
