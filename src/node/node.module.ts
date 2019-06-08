@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, DynamicModule, Provider } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { NodeSchemaVersion } from '../entities/node-schema-version.entity';
 import { NodeSchema } from '../entities/node-schema.entity';
@@ -11,17 +11,45 @@ import { NodeController } from './node.controller';
 import { NodeService } from './node.service';
 import { NodeDataController } from './node-data.controller';
 import { NodeDataService } from './node-data.service';
+import { ClassProvider } from '@nestjs/common/interfaces';
 
+const defaultProviders = [
+  {
+    provide: 'NodeService',
+    useClass: NodeService,
+  },
+  {
+    provide: 'NodeDataService',
+    useClass: NodeDataService,
+  },
+  {
+    provide: 'NodeSchemaService',
+    useClass: NodeSchemaService,
+  },
+  {
+    provide: 'AttributeService',
+    useClass: AttributeService,
+  },
+  {
+    provide: 'SequenceAttributeService',
+    useClass: SequenceAttributeService,
+  },
+];
 @Module({
   imports: [TypeOrmModule.forFeature([NodeSchema, NodeSchemaVersion, Node])],
   controllers: [NodeController, NodeSchemaController, NodeDataController],
-  providers: [
-    NodeService,
-    NodeDataService,
-    NodeSchemaService,
-    AttributeService,
-    SequenceAttributeService,
-    NodeDataService,
-  ],
+  providers: defaultProviders,
 })
-export class NodeModule {}
+export class NodeModule {
+  static forRoot(providers: Provider[]): DynamicModule {
+    return {
+      module: NodeModule,
+      providers: defaultProviders.map(
+        (provider: ClassProvider) =>
+          providers.find(
+            (p: ClassProvider) => p && p.provide === provider.provide,
+          ) || provider,
+      ),
+    };
+  }
+}
