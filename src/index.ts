@@ -4,3 +4,5 @@ export * from './organization';
 export * from './roles';
 export * from './user';
 export * from './view';
+export * from '@sierralabs/nest-identity/dist/auth/index';
+export * from '@sierralabs/nest-identity/dist/mailer-config.service';
