@@ -14,7 +14,12 @@ import { User } from './user.entity';
 import { NodeSchemaVersion } from './node-schema-version.entity';
 import { AttributeType } from '../node';
 
-
+export enum ReferenceType {
+  OneToOne = 'one-to-one',
+  OneToMany = 'one-to-many',
+  ManyToOne = 'many-to-one',
+  ManyToMany = 'many-to-many',
+}
 @Entity()
 export class Attribute {
   @ApiModelProperty()
@@ -69,13 +74,17 @@ export class Attribute {
     comment:
       'The type of reference relationship: one-to-one, one-to-many, many-to-many',
   })
-  referenceType: string;
+  referenceType: ReferenceType;
 
   @Column('boolean', { default: false })
   isRequired: boolean;
 
   @Column('boolean', { default: false, select: false })
   isDeleted: boolean;
+
+  // system assigned property for back reference attributes
+  // this is not a database table column; see NodeSchema.mapToNodeSchemaDto()
+  isBackReference: boolean;
 
   @CreateDateColumn({ select: false })
   created: Date;

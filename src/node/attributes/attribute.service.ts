@@ -7,6 +7,7 @@ import { AttributeValueLog } from '../../entities/attribute-value-log.entity';
 import { AttributeValue } from '../../entities/attribute-value.entity';
 import { Node } from '../../entities/node.entity';
 import { AttributeValueDto } from '../node.dto';
+import { User } from '../../entities';
 
 @Injectable()
 export class AttributeService {
@@ -41,6 +42,8 @@ export class AttributeService {
       attributeValue.id = attributeValueDto.id;
       attributeValue.createdBy = node.modifiedBy;
     }
+    // TODO: check for unchanged attribute values and ignore rather then
+    // saving and then creating an audit log when nothing changed
     attributeValue.nodeId = node.id;
     attributeValue.attributeId = attributeValueDto.attributeId;
     attributeValue.textValue = attributeValueDto.textValue;
@@ -59,6 +62,22 @@ export class AttributeService {
       attributeValue,
     );
     return attributeValue;
+  }
+
+  public async deleteAttributeValue(
+    transactionalEntityManager: EntityManager,
+    nodeId: string,
+    user: User,
+  ) {
+    return transactionalEntityManager.update(
+      AttributeValue,
+      { referenceNodeId: nodeId },
+      {
+        isDeleted: true,
+        modifiedBy: user,
+      },
+    );
+    // TODO: bulk create attribute value log on delete?
   }
 
   public async createAttributeValueLog(
