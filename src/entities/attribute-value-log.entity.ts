@@ -49,6 +49,13 @@ export class AttributeValueLog {
   numberValue: number;
 
   @ApiModelPropertyOptional()
+  @Column('timestamp', {
+    nullable: true,
+    comment: 'A snapshot of the date/time value at the time of the log entry.',
+  })
+  dateTimeValue: Date;
+
+  @ApiModelPropertyOptional()
   @Column('date', {
     nullable: true,
     comment: 'A snapshot of the date value at the time of the log entry.',

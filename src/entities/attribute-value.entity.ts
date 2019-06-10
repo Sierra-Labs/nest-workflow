@@ -63,10 +63,18 @@ export class AttributeValue {
   numberValue: number;
 
   @ApiModelPropertyOptional()
+  @Column('timestamp', {
+    nullable: true,
+    comment:
+      'Depending on `attribute.type` and attribute.options the attribute value stored as date time values.',
+  })
+  dateTimeValue: Date;
+
+  @ApiModelPropertyOptional()
   @Column('date', {
     nullable: true,
     comment:
-      'Depending on `attribute.type` and attribute.options the attribute value as date for date only and date time values.',
+      'Depending on `attribute.type` and attribute.options the attribute value as date for date only values.',
   })
   dateValue: Date;
 
@@ -74,7 +82,7 @@ export class AttributeValue {
   @Column('time without time zone', {
     nullable: true,
     comment:
-      'Depending on `attribute.type` and attribute.options the attribute value as time for time only and date time values.',
+      'Depending on `attribute.type` and attribute.options the attribute value as time for time only values.',
   })
   timeValue: string;
 

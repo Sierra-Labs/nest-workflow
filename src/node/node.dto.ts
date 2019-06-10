@@ -5,6 +5,7 @@ export class AttributeValueDto {
   attributeId: string;
   textValue?: string;
   numberValue?: number;
+  dateTimeValue?: Date;
   dateValue?: Date;
   timeValue?: string;
   jsonValue?: any;

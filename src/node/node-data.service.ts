@@ -6,7 +6,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@sierralabs/nest-utils';
 
-import { AttributeValue, ReferenceType, User } from '../entities';
+import { AttributeValue, ReferenceType, User, Attribute } from '../entities';
 import { NodeSchemaVersion } from '../entities/node-schema-version.entity';
 import { Node } from '../entities/node.entity';
 import { AttributeType } from './attributes';
@@ -454,7 +454,7 @@ export class NodeDataService {
           continue; // attribute may have been deleted
         }
         const fieldName = this.getAttributeValueFieldNameByType(
-          attributeValue.attribute.type,
+          attributeValue.attribute,
         );
         if (
           attributeValue.attribute.type === AttributeType.Reference &&
@@ -510,11 +510,17 @@ export class NodeDataService {
     return nodeDataDto;
   }
 
-  public getAttributeValueFieldNameByType(type: AttributeType): string {
-    switch (type) {
+  public getAttributeValueFieldNameByType(attribute: Attribute): string {
+    switch (attribute.type) {
       case AttributeType.DateTime:
-        // TODO: handle date/time values
-        return 'dateValue';
+        switch (attribute.options.type) {
+          case 'DATE_TIME':
+            return 'dateTimeValue';
+          case 'DATE_ONLY':
+            return 'dateValue';
+          case 'TIME_ONLY':
+            return 'timeValue';
+        }
       case AttributeType.File:
       case AttributeType.List:
         return 'jsonValue';
@@ -762,9 +768,7 @@ export class NodeDataService {
           const attributeValueDto: AttributeValueDto = {
             attributeId: attribute.id,
           };
-          const fieldName = this.getAttributeValueFieldNameByType(
-            attribute.type,
-          );
+          const fieldName = this.getAttributeValueFieldNameByType(attribute);
           if (!value && attributeValues.length > 0) {
             continue; // no data for attribute
           } else if (

@@ -48,7 +48,9 @@ export class AttributeService {
     attributeValue.attributeId = attributeValueDto.attributeId;
     attributeValue.textValue = attributeValueDto.textValue;
     attributeValue.numberValue = attributeValueDto.numberValue;
+    attributeValue.dateTimeValue = attributeValueDto.dateTimeValue;
     attributeValue.dateValue = attributeValueDto.dateValue;
+    // TODO: validate and format timeValue (HH:MM:SS) otherwise db error
     attributeValue.timeValue = attributeValueDto.timeValue;
     attributeValue.jsonValue = attributeValueDto.jsonValue;
     attributeValue.referenceNodeId = attributeValueDto.referenceNodeId;
@@ -88,6 +90,7 @@ export class AttributeService {
     attributeValueLog.attributeValueId = attributeValue.id;
     attributeValueLog.textValue = attributeValue.textValue;
     attributeValueLog.numberValue = attributeValue.numberValue;
+    attributeValueLog.dateTimeValue = attributeValue.dateTimeValue;
     attributeValueLog.dateValue = attributeValue.dateValue;
     attributeValueLog.timeValue = attributeValue.timeValue;
     attributeValueLog.jsonValue = attributeValue.jsonValue;
