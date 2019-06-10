@@ -9,6 +9,7 @@ import {
   Post,
   Body,
   Put,
+  Delete,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -22,8 +23,7 @@ import {
   ParseBooleanPipe,
   RequiredPipe,
 } from '@sierralabs/nest-utils';
-import { Node } from '../entities/node.entity';
-import { OwnerInterceptor, Roles, RolesType } from '@sierralabs/nest-identity';
+import { Roles, RolesType } from '@sierralabs/nest-identity';
 import { NodeDataDto, NodeDataService } from './node-data.service';
 
 @ApiUseTags('Node Data')
@@ -110,6 +110,23 @@ export class NodeDataController {
   }
 
   @Roles(RolesType.$authenticated)
+  @ApiOperation({ title: 'Delete a node' })
+  @Delete(':nodeSchemaName/:nodeId')
+  public async delete(
+    @Req() request,
+    @Param('nodeSchemaName', new RequiredPipe()) nodeSchemaName: string,
+    @Param('nodeId', new RequiredPipe()) nodeId: string,
+  ): Promise<boolean> {
+    if (!request.user.activeOrganization) {
+      throw new BadRequestException('no active organization specified.');
+    }
+
+    // TODO: Check Node Write Permissions
+
+    return this.nodeDataService.delete(nodeId, request.user);
+  }
+
+  @Roles(RolesType.$authenticated)
   @ApiOperation({ title: 'Update a node' })
   @Put(':nodeSchemaName/:nodeId')
   public async update(
@@ -126,5 +143,33 @@ export class NodeDataController {
 
     nodeDataDto.nodeId = nodeId;
     return this.nodeDataService.update(nodeDataDto, request.user);
+  }
+
+  @Roles(RolesType.$authenticated)
+  @ApiOperation({
+    title: 'Creates a reference node and updates the source node attribute',
+  })
+  @Put(':nodeSchemaName/:nodeId/:referenceAttributeName')
+  public async createReferenceNode(
+    @Req() request,
+    @Param('nodeSchemaName', new RequiredPipe()) nodeSchemaName: string,
+    @Param('nodeId', new RequiredPipe()) nodeId: string,
+    @Param('referenceAttributeName', new RequiredPipe())
+    referenceAttributeName: string,
+    @Body() nodeDataDto: NodeDataDto,
+  ): Promise<NodeDataDto> {
+    if (!request.user.activeOrganization) {
+      throw new BadRequestException('no active organization specified.');
+    }
+
+    // TODO: Check Node Write Permissions
+
+    return this.nodeDataService.createReferenceNode(
+      nodeSchemaName,
+      nodeId,
+      referenceAttributeName,
+      nodeDataDto,
+      request.user,
+    );
   }
 }

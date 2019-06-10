@@ -1,3 +1,4 @@
+import { Validator } from 'class-validator';
 import * as _ from 'lodash';
 import { EntityManager, Repository, SelectQueryBuilder } from 'typeorm';
 
@@ -5,27 +6,20 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@sierralabs/nest-utils';
 
-import { User, NodeSchema, AttributeValue } from '../entities';
+import { AttributeValue, ReferenceType, User } from '../entities';
 import { NodeSchemaVersion } from '../entities/node-schema-version.entity';
 import { Node } from '../entities/node.entity';
 import { AttributeType } from './attributes';
 import { AttributeService } from './attributes/attribute.service';
 import { SequenceAttributeService } from './attributes/sequence-attribute.service';
-import { AttributeValueDto, NodeDto } from './node.dto';
+import { NodeSchemaDto } from './node-schema.dto';
+import { NodeSchemaService } from './node-schema.service';
+import { AttributeValueDto } from './node.dto';
 import {
   NodeAttributeWhereClause,
   NodeFindOptions,
   NodeService,
 } from './node.service';
-import { NodeSchemaService } from './node-schema.service';
-import { NodeSchemaDto } from './node-schema.dto';
-
-export enum ReferenceType {
-  OneToOne = 'one-to-one',
-  OneToMany = 'one-to-many',
-  ManyToOne = 'many-to-one',
-  ManyToMany = 'many-to-many',
-}
 
 export interface NodeDataDto {
   nodeId?: string;
@@ -153,7 +147,11 @@ export class NodeDataService {
         '"attribute".is_deleted = false',
       )
       // for attributes with reference nodes get the reference nodes
-      .innerJoinAndSelect('attributeValue.referenceNode', 'referenceNode')
+      .innerJoinAndSelect(
+        'attributeValue.referenceNode',
+        'referenceNode',
+        '"referenceNode".is_deleted = false',
+      )
       .innerJoinAndSelect(
         'referenceNode.attributeValues',
         'referenceNodeAttributeValue',
@@ -248,13 +246,16 @@ export class NodeDataService {
             .select('DISTINCT "node"."id"')
             .innerJoin('node.nodeSchemaVersion', 'nodeSchemaVersion')
             .innerJoin('nodeSchemaVersion.nodeSchema', 'nodeSchema')
-            .where('"nodeSchemaVersion".id = :versionId', {
-              versionId: nodeSchemaDto.versionId,
-            });
+            .where(
+              '"nodeSchemaVersion".id = :versionId AND "node".is_deleted = false',
+              {
+                versionId: nodeSchemaDto.versionId,
+              },
+            );
           if (options.order) {
             this.addOrderFilter(query, nodeSchemaDto, options);
           }
-          if (options.where) {
+          if (options.where || options.search) {
             if (options.where instanceof Array) {
               // TODO: implement OR logic
               // subQuery.andWhere(new Brackets(bracketQuery => {
@@ -264,15 +265,8 @@ export class NodeDataService {
               //   subQuery.andWhere('"attribute"."name" = :name', {});
               // }
             } else {
-              this.addAttributeWhere(subQuery, options.where);
+              this.addAttributeWhere(subQuery, options);
             }
-          }
-          if (options.search) {
-            subQuery
-              // TODO: handle number_value, date_value, etc.
-              .andWhere('"attributeValue"."text_value" LIKE :search', {
-                search: `%${options.search}%`,
-              });
           }
           return subQuery;
         },
@@ -291,7 +285,7 @@ export class NodeDataService {
 
   protected async addAttributeWhere(
     query: SelectQueryBuilder<any>,
-    attributeWhereClause: NodeAttributeWhereClause,
+    options: NodeFindOptions,
   ) {
     query
       .innerJoin(
@@ -300,37 +294,69 @@ export class NodeDataService {
         '"attributeValue".is_deleted = false',
       )
       .innerJoin('attributeValue.attribute', 'attribute');
-    const keys = Object.keys(attributeWhereClause);
-    for (const key of keys) {
-      if (key === 'referenceNodeId') {
-        // filter to get forward reference relationships
-        query.andWhere('"attributeValue"."reference_node_id" = :value', {
-          value: attributeWhereClause.referenceNodeId,
-        });
-      } else if (key === 'backReferenceNodeId') {
-        // filter to get back reference relationships
-        query
-          .innerJoin(
-            'nodeSchemaVersion.attributeBackReferences',
-            'attributeBackReferences',
-            '"attributeBackReferences".is_deleted = false',
-          )
-          .innerJoin(
-            'attributeBackReferences.nodeSchemaVersion',
-            'attributeBackReferenceNodeSchemaVersion',
-          )
-          .innerJoin(
-            'attributeBackReferenceNodeSchemaVersion.nodes',
-            'backReferenceNode',
-            `"backReferenceNode".is_deleted = false AND "backReferenceNode"."id" = :nodeId AND
-        EXISTS (SELECT 1 FROM "attribute_value" WHERE reference_node_id = "node"."id" AND node_id = "backReferenceNode"."id")`,
-            { nodeId: attributeWhereClause.backReferenceNodeId },
-          );
+    if (options.search) {
+      const validator = new Validator();
+      if (validator.isUUID(options.search)) {
+        // autocomplete view uses this when setting default / pre-populated form fields
+        query.andWhere('"node"."id" = :nodeId', { nodeId: options.search });
       } else {
-        query.andWhere('"attribute"."name" = :key', { key });
-        query.andWhere('"attributeValue"."text_value" = :value', {
-          value: attributeWhereClause[key],
+        // TODO: handle number_value, date_value, etc.
+        query.andWhere('"attributeValue"."text_value" ILIKE :search', {
+          search: `%${options.search}%`,
         });
+      }
+    }
+    if (options.where) {
+      const whereClause = options.where as NodeAttributeWhereClause;
+      const keys = Object.keys(whereClause);
+      for (const key of keys) {
+        if (key === 'referenceNodeId') {
+          // filter to get forward reference relationships
+          query.andWhere('"attributeValue"."reference_node_id" = :value', {
+            value: whereClause.referenceNodeId,
+          });
+        } else if (key === 'backReferenceNodeId') {
+          // filter to get back reference relationships
+          query
+            .innerJoin(
+              'nodeSchemaVersion.attributeBackReferences',
+              'attributeBackReferences',
+              '"attributeBackReferences".is_deleted = false',
+            )
+            .innerJoin(
+              'attributeBackReferences.nodeSchemaVersion',
+              'attributeBackReferenceNodeSchemaVersion',
+            )
+            .innerJoin(
+              'attributeBackReferenceNodeSchemaVersion.nodes',
+              'backReferenceNode',
+              `"backReferenceNode".is_deleted = false AND "backReferenceNode"."id" = :nodeId AND
+          EXISTS (SELECT 1 FROM "attribute_value" WHERE reference_node_id = "node"."id" AND node_id = "backReferenceNode"."id")`,
+              { nodeId: whereClause.backReferenceNodeId },
+            );
+        } else {
+          // query.andWhere('"attribute"."name" = :key', { key });
+          // query.andWhere('"attributeValue"."text_value" = :value', {
+          //   value: whereClause[key],
+          // });
+          if (typeof whereClause[key] === 'number') {
+            // must separate numeric values when querying in CASE statement
+            query.andWhere(
+              `CASE
+              WHEN "attribute"."name" = :name AND "attribute"."type" = 'number'
+                THEN "attributeValue"."number_value" = :value END`,
+              { name: key, value: whereClause[key] },
+            );
+          } else {
+            query.andWhere(
+              `CASE
+              WHEN "attribute"."name" = :name AND "attribute"."type" = 'reference'
+                THEN "attributeValue"."reference_node_id" = :value
+              ELSE "attribute"."name" = :name AND "attributeValue"."text_value" = :value END`,
+              { name: key, value: whereClause[key] },
+            );
+          }
+        }
       }
     }
   }
@@ -430,10 +456,10 @@ export class NodeDataService {
         const fieldName = this.getAttributeValueFieldNameByType(
           attributeValue.attribute.type,
         );
-        if (attributeValue.attribute.type === AttributeType.Reference) {
-          if (!attributeValue.referenceNode) {
-            continue; // skip if no reference node exists
-          }
+        if (
+          attributeValue.attribute.type === AttributeType.Reference &&
+          attributeValue.referenceNode
+        ) {
           const noramlizedReferenceNode = this.normalizeNodeAttributes(
             attributeValue.referenceNode,
           );
@@ -496,7 +522,7 @@ export class NodeDataService {
       case AttributeType.Boolean:
         return 'numberValue';
       case AttributeType.Reference:
-        return 'referenceNode';
+        return 'referenceNodeId';
       case AttributeType.Enumeration:
       case AttributeType.Sequence:
       case AttributeType.Text:
@@ -528,45 +554,53 @@ export class NodeDataService {
     if (!nodeSchemaVersion) {
       throw new BadRequestException('Node Schema not found.');
     }
+    // save in a SQL transaction
+    let node;
+    await this.entityManager.transaction(async transactionalEntityManager => {
+      node = await this.createWithTransaction(
+        transactionalEntityManager,
+        nodeSchemaVersion,
+        nodeDataDto,
+        user,
+      );
+    });
+    return this.findById(user.activeOrganization.id, nodeSchemaName, node.id);
+  }
+
+  protected async createWithTransaction(
+    transactionalEntityManager: EntityManager,
+    nodeSchemaVersion: NodeSchemaVersion,
+    nodeDataDto: NodeDataDto,
+    user: User,
+  ): Promise<Node> {
     let node = new Node();
     node.nodeSchemaVersionId = nodeSchemaVersion.id;
     node.createdBy = user;
     node.modifiedBy = user;
     node.attributeValues = [];
 
-    // save in a SQL transaction
-    await this.entityManager.transaction(async transactionalEntityManager => {
-      node = await transactionalEntityManager.save(node);
-      // assign the nodeSchemaVersion for use when processing attribute values
-      node.nodeSchemaVersion = nodeSchemaVersion;
-      await this.upsertAttributeValues(
-        transactionalEntityManager,
-        node,
-        nodeDataDto,
-      );
-    });
-    return this.findById(user.activeOrganization.id, nodeSchemaName, node.id);
+    node = await transactionalEntityManager.save(node);
+    // assign the nodeSchemaVersion for use when processing attribute values
+    node.nodeSchemaVersion = nodeSchemaVersion;
+    await this.upsertAttributeValues(
+      transactionalEntityManager,
+      node,
+      nodeDataDto,
+    );
+    return node;
   }
 
   public async update(
     nodeDataDto: NodeDataDto,
     user: User,
   ): Promise<NodeDataDto> {
-    const node = await this.nodeService.findById(
-      user.activeOrganization.id,
-      nodeDataDto.nodeId,
-    );
-    if (!node) {
-      throw new BadRequestException('Node not found.');
-    }
-    node.modifiedBy = user;
     // save in a SQL transaction
+    let node;
     await this.entityManager.transaction(async transactionalEntityManager => {
-      await transactionalEntityManager.save(node);
-      await this.upsertAttributeValues(
+      node = await this.updateWithTransaction(
         transactionalEntityManager,
-        node,
         nodeDataDto,
+        user,
       );
     });
     return this.findById(
@@ -576,11 +610,137 @@ export class NodeDataService {
     );
   }
 
+  protected async updateWithTransaction(
+    transactionalEntityManager: EntityManager,
+    nodeDataDto: NodeDataDto,
+    user: User,
+  ): Promise<Node> {
+    const node = await this.nodeService.findById(
+      user.activeOrganization.id,
+      nodeDataDto.nodeId,
+    );
+    if (!node) {
+      throw new BadRequestException('Node not found.');
+    }
+    const updateNode = new Node();
+    updateNode.id = node.id;
+    updateNode.modifiedBy = user;
+    node.modifiedBy = user;
+    node.modifiedBy = user; // needed for attribute values
+    await transactionalEntityManager.save(updateNode);
+    await this.upsertAttributeValues(
+      transactionalEntityManager,
+      node,
+      nodeDataDto,
+    );
+    return node;
+  }
+
+  public async delete(nodeId: string, user: User): Promise<boolean> {
+    const node = await this.nodeService.findById(
+      user.activeOrganization.id,
+      nodeId,
+    );
+    if (!node) {
+      throw new BadRequestException('Node not found.');
+    }
+    const updateNode = new Node();
+    updateNode.id = node.id;
+    updateNode.isDeleted = true;
+    updateNode.modifiedBy = user;
+    node.modifiedBy = user; // needed for attribute values
+    await this.entityManager.transaction(async transactionalEntityManager => {
+      await transactionalEntityManager.save(node);
+      this.attributeService.deleteAttributeValue(
+        transactionalEntityManager,
+        nodeId,
+        user,
+      );
+    });
+    return true;
+  }
+
+  public async createReferenceNode(
+    nodeSchemaName: string,
+    nodeId: string,
+    referenceAttributeName: string,
+    nodeDataDto: NodeDataDto,
+    user: User,
+  ): Promise<NodeDataDto> {
+    // check user has access to the source node schema
+    const nodeSchemaVersion = await this.getNodeSchemaVersionByName(
+      user.activeOrganization.id,
+      nodeSchemaName,
+    );
+    if (!nodeSchemaVersion) {
+      throw new BadRequestException('Node Schema not found.');
+    }
+
+    // check if attribute is actually a reference field
+    const attribute = _.find(nodeSchemaVersion.attributes, {
+      name: referenceAttributeName,
+    });
+    if (!attribute || attribute.type !== AttributeType.Reference) {
+      throw new BadRequestException('Not a Reference Attribute.');
+    }
+
+    // check if the source node exists
+    const sourceNodeDataDto = await this.findById(
+      user.activeOrganization.id,
+      nodeSchemaName,
+      nodeId,
+    );
+    if (!sourceNodeDataDto) {
+      throw new BadRequestException('Source node not found.');
+    }
+
+    // check if only one reference allows and validate
+    if (
+      attribute.options.referenceType === ReferenceType.OneToOne ||
+      attribute.options.referenceType === ReferenceType.ManyToOne
+    ) {
+      // get attribute values using nodeId
+      if (sourceNodeDataDto[referenceAttributeName]) {
+        throw new BadRequestException(
+          `A reference node already exists. Adding a reference node would violate the ${
+            attribute.options.referenceType
+          } constraint for ${referenceAttributeName}.`,
+        );
+      }
+    }
+
+    // validate the nodeDataDto is a valid node schema type for the reference
+    const referenceNodeSchemaVersion = await this.getNodeSchemaVersionByById(
+      user.activeOrganization.id,
+      attribute.options.nodeSchemaVersionId,
+    );
+    let node;
+    await this.entityManager.transaction(async transactionalEntityManager => {
+      node = await this.createWithTransaction(
+        transactionalEntityManager,
+        referenceNodeSchemaVersion,
+        nodeDataDto,
+        user,
+      );
+      sourceNodeDataDto[referenceAttributeName] = node.id;
+      await this.updateWithTransaction(
+        transactionalEntityManager,
+        sourceNodeDataDto,
+        user,
+      );
+    });
+    return this.findById(
+      user.activeOrganization.id,
+      referenceNodeSchemaVersion.name,
+      node.id,
+    );
+  }
+
   protected async upsertAttributeValues(
     transactionalEntityManager: EntityManager,
     node: Node,
     nodeDataDto: NodeDataDto,
-  ) {
+  ): Promise<boolean> {
     // Loop through all attributes and see if there's needed processing
     // (example: Sequence attributes need to be auto generated)
     for (const attribute of node.nodeSchemaVersion.attributes) {
@@ -620,8 +780,15 @@ export class NodeDataService {
             }
             // null values are treated as intentitional clearing of attribute value
             if (attribute.type === AttributeType.Reference) {
-              attributeValueDto.referenceNodeId =
-                value && value.nodeId ? value.nodeId : null;
+              // reference value could be an object of the reference node or it could be the UUID of
+              // the reference node
+              const validator = new Validator();
+              if (validator.isUUID(value)) {
+                attributeValueDto.referenceNodeId = value;
+              } else {
+                attributeValueDto.referenceNodeId =
+                  value && value.nodeId ? value.nodeId : null;
+              }
             } else {
               attributeValueDto[fieldName] = value;
             }
@@ -637,5 +804,54 @@ export class NodeDataService {
           );
       }
     }
+    return true; // needed for async/await
+  }
+
+  /**
+   * Helper function for this class only
+   */
+  protected async getNodeSchemaVersionByName(
+    organizationId: number,
+    nodeSchemaName: string,
+  ): Promise<NodeSchemaVersion> {
+    return this.entityManager
+      .createQueryBuilder(NodeSchemaVersion, 'nodeSchemaVersion')
+      .leftJoinAndSelect(
+        'nodeSchemaVersion.attributes',
+        'attributes',
+        '"attributes".is_deleted = false',
+      )
+      .innerJoin('nodeSchemaVersion.nodeSchema', 'nodeSchema')
+      .where('"nodeSchema".organization_id = :organizationId', {
+        organizationId,
+      })
+      .andWhere('"nodeSchemaVersion".name = :nodeSchemaName', {
+        nodeSchemaName,
+      })
+      .getOne();
+  }
+
+  /**
+   * Helper function for this class only
+   */
+  protected async getNodeSchemaVersionByById(
+    organizationId: number,
+    nodeSchemaVersionId: string,
+  ): Promise<NodeSchemaVersion> {
+    return this.entityManager
+      .createQueryBuilder(NodeSchemaVersion, 'nodeSchemaVersion')
+      .leftJoinAndSelect(
+        'nodeSchemaVersion.attributes',
+        'attributes',
+        '"attributes".is_deleted = false',
+      )
+      .innerJoin('nodeSchemaVersion.nodeSchema', 'nodeSchema')
+      .where('"nodeSchema".organization_id = :organizationId', {
+        organizationId,
+      })
+      .andWhere('"nodeSchemaVersion"."id" = :nodeSchemaVersionId', {
+        nodeSchemaVersionId,
+      })
+      .getOne();
   }
 }

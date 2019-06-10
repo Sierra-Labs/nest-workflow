@@ -167,11 +167,15 @@ export class NodeService {
           'attributes',
           '"attributes".is_deleted = false',
         )
-        .leftJoinAndSelect('node.attributeValues', 'attributeValue')
+        .leftJoinAndSelect(
+          'node.attributeValues',
+          'attributeValue',
+          '"attributeValue".is_deleted = false',
+        )
         .leftJoinAndSelect(
           'attributeValue.attribute',
           'attribute',
-          '"attributeValue".is_deleted = false AND "attribute".is_deleted = false',
+          '"attribute".is_deleted = false',
         )
         .innerJoin('nodeSchemaVersion.nodeSchema', 'nodeSchema')
         // Add the back references from relationships

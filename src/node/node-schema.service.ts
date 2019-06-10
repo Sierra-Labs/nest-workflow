@@ -9,8 +9,9 @@ import { NodeSchema } from '../entities/node-schema.entity';
 import { FindNodeSchemaDto, NodeSchemaDto } from './node-schema.dto';
 
 import { plainToClass } from 'class-transformer';
-import { Attribute } from '../entities/attribute.entity';
+import { Attribute, ReferenceType } from '../entities/attribute.entity';
 import { User } from '../entities/user.entity';
+import { AttributeType } from './attributes';
 
 @Injectable()
 export class NodeSchemaService {
@@ -107,7 +108,7 @@ export class NodeSchemaService {
       )
       // Add the back references from relationships
       .leftJoinAndSelect(
-        'nodeSchemaVersion.attributeBackReferences',
+        'publishedVersion.attributeBackReferences',
         'attributeBackReferences',
         '"attributeBackReferences".is_deleted = false',
       )
@@ -115,9 +116,11 @@ export class NodeSchemaService {
         'attributeBackReferences.nodeSchemaVersion',
         'attributeBackReferenceNodeSchemaVersion',
       )
-      .where('nodeSchema.organization_id = :organizationId', { organizationId })
-      .andWhere('nodeSchema.id = :nodeSchemaId', { nodeSchemaId })
-      .orderBy('attribute.position', 'ASC')
+      .where('"nodeSchema".organization_id = :organizationId', {
+        organizationId,
+      })
+      .andWhere('"nodeSchema".id = :nodeSchemaId', { nodeSchemaId })
+      .orderBy('"attribute".position', 'ASC')
       .getOne();
     return this.mapToNodeSchemaDto(nodeSchema.publishedVersion);
   }
@@ -150,7 +153,7 @@ export class NodeSchemaService {
       .andWhere('"nodeSchemaVersion".name = :nodeSchemaName', {
         nodeSchemaName,
       })
-      .orderBy('attribute.position', 'ASC')
+      .orderBy('"attribute".position', 'ASC')
       .getOne();
     if (!nodeSchemaVersion) {
       return;
@@ -198,9 +201,48 @@ export class NodeSchemaService {
     nodeSchemaVersion: NodeSchemaVersion,
   ): NodeSchemaDto {
     const nodeSchemaDto: NodeSchemaDto = nodeSchemaVersion;
+    // inverse attribute back references and add as a regular attribute
+    for (const attributeBackReference of nodeSchemaVersion.attributeBackReferences) {
+      const referenceAttribute = {
+        id: attributeBackReference.id,
+        nodeSchemaVersionId: attributeBackReference.nodeSchemaVersion.id,
+        name: attributeBackReference.nodeSchemaVersion.name,
+        label: attributeBackReference.nodeSchemaVersion.label,
+        type: AttributeType.Reference,
+        referenceType: this.inverseReferenceType(
+          attributeBackReference.referenceType,
+        ),
+        isRequired: attributeBackReference.isRequired,
+        position: nodeSchemaVersion.attributes.length, // add to end of attributes
+        isBackReference: true,
+        options: {
+          template: '',
+          nodeSchemaVersionId: attributeBackReference.nodeSchemaVersion.id,
+          backReferenceName: attributeBackReference.name,
+          backReferenceLabel: attributeBackReference.label,
+          referenceType: this.inverseReferenceType(
+            attributeBackReference.referenceType,
+          ),
+        },
+      };
+      nodeSchemaDto.attributes.push(referenceAttribute as Attribute);
+    }
     nodeSchemaDto.versionId = nodeSchemaVersion.id;
     nodeSchemaDto.id = nodeSchemaVersion.nodeSchemaId;
     return nodeSchemaDto;
+  }
+
+  inverseReferenceType(referenceType: ReferenceType): ReferenceType {
+    switch (referenceType) {
+      case ReferenceType.OneToOne:
+        return ReferenceType.OneToOne;
+      case ReferenceType.OneToMany:
+        return ReferenceType.ManyToOne;
+      case ReferenceType.ManyToOne:
+        return ReferenceType.OneToMany;
+      case ReferenceType.ManyToMany:
+        return ReferenceType.ManyToMany;
+    }
   }
 
   public async create(nodeSchemaDto: NodeSchemaDto): Promise<NodeSchemaDto> {
