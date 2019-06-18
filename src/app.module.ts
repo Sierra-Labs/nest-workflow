@@ -1,7 +1,6 @@
+import * as convict from 'convict';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
-import * as fs from 'fs';
-import * as convict from 'convict';
 
 import { MailerModule } from '@nest-modules/mailer';
 import { Module } from '@nestjs/common';
@@ -22,6 +21,7 @@ import { RolesModule } from './roles/roles.module';
 import { UserValidateStrategy } from './user/user-validate.strategy';
 import { UserModule } from './user/user.module';
 import { ViewModule } from './view/view.module';
+import { WorkflowModule } from './workflow/workflow.module';
 
 const environment = process.env.NODE_ENV || 'development';
 const envFilePath = path.resolve(process.cwd(), `.env.${environment}`);
@@ -57,6 +57,7 @@ const config = configService.get('database');
     RolesModule,
     NodeModule,
     ViewModule,
+    WorkflowModule,
   ],
   controllers: [AppController],
   providers: [AppService],

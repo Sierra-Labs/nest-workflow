@@ -12,7 +12,7 @@ import {
   Delete,
 } from '@nestjs/common';
 import { ApiImplicitQuery, ApiOperation, ApiUseTags } from '@nestjs/swagger';
-import { OwnerInterceptor, Roles } from '@sierralabs/nest-identity';
+import { OwnerInterceptor, Roles, RolesType } from '@sierralabs/nest-identity';
 import {
   ConfigService,
   ParseBooleanPipe,
@@ -32,7 +32,7 @@ export class ViewController {
     protected readonly viewService: ViewService,
   ) {}
 
-  @Roles('Admin')
+  @Roles(RolesType.$authenticated)
   @ApiOperation({ title: 'Get list of views' })
   @ApiImplicitQuery({ name: 'search', required: false })
   @ApiImplicitQuery({ name: 'page', required: false })
@@ -86,7 +86,7 @@ export class ViewController {
     );
   }
 
-  @Roles('Admin')
+  @Roles(RolesType.$authenticated)
   @ApiOperation({ title: 'Get view template and its latest template version' })
   @Get(':viewId')
   findById(
@@ -100,7 +100,7 @@ export class ViewController {
     return this.viewService.findById(activeOrganization.id, viewId);
   }
 
-  @Roles('Admin')
+  @Roles(RolesType.$authenticated)
   @ApiOperation({ title: 'Get a specific view template version' })
   @Get('version/:versionId')
   findVersionById(

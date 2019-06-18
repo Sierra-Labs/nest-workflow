@@ -339,6 +339,7 @@ export class NodeDataService {
           // query.andWhere('"attributeValue"."text_value" = :value', {
           //   value: whereClause[key],
           // });
+          const validator = new Validator();
           if (typeof whereClause[key] === 'number') {
             // must separate numeric values when querying in CASE statement
             query.andWhere(
@@ -347,12 +348,17 @@ export class NodeDataService {
                 THEN "attributeValue"."number_value" = :value END`,
               { name: key, value: whereClause[key] },
             );
-          } else {
+          } else if (validator.isUUID(whereClause[key])) {
             query.andWhere(
               `CASE
               WHEN "attribute"."name" = :name AND "attribute"."type" = 'reference'
-                THEN "attributeValue"."reference_node_id" = :value
-              ELSE "attribute"."name" = :name AND "attributeValue"."text_value" = :value END`,
+                THEN "attributeValue"."reference_node_id" = :value END`,
+              { name: key, value: whereClause[key] },
+            );
+          } else {
+            query.andWhere(
+              `CASE
+              WHEN "attribute"."name" = :name THEN "attributeValue"."text_value" = :value END`,
               { name: key, value: whereClause[key] },
             );
           }

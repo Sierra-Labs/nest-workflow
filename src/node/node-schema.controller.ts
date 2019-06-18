@@ -16,16 +16,18 @@ import { OwnerInterceptor, Roles, RolesType } from '@sierralabs/nest-identity';
 import {
   ConfigService,
   ParseBooleanPipe,
-  RequiredPipe,
   ParseEntityPipe,
+  RequiredPipe,
 } from '@sierralabs/nest-utils';
 
 import { NodeSchemaVersion } from '../entities/node-schema-version.entity';
 import { NodeSchema } from '../entities/node-schema.entity';
 import { Node } from '../entities/node.entity';
+import { WorkflowDto } from '../workflow/workflow.dto';
+import { WorkflowService } from '../workflow/workflow.service';
 import { FindNodeSchemaDto, NodeSchemaDto } from './node-schema.dto';
 import { NodeSchemaService } from './node-schema.service';
-import { NodeService, NodeFindOptions } from './node.service';
+import { NodeFindOptions, NodeService } from './node.service';
 
 @ApiUseTags('Node Schemas')
 @Controller('node-schemas')
@@ -34,9 +36,10 @@ export class NodeSchemaController {
     protected readonly configService: ConfigService,
     protected readonly nodeSchemaService: NodeSchemaService,
     protected readonly nodeService: NodeService,
+    protected readonly workflowService: WorkflowService,
   ) {}
 
-  @Roles('Admin')
+  @Roles(RolesType.$authenticated)
   @ApiOperation({ title: 'Get list of Node Schemas' })
   @ApiImplicitQuery({ name: 'search', required: false })
   @ApiImplicitQuery({ name: 'page', required: false })
@@ -129,7 +132,7 @@ export class NodeSchemaController {
     );
   }
 
-  @Roles('Admin')
+  @Roles(RolesType.$authenticated)
   @ApiOperation({ title: 'Get a specific node schema version' })
   @Get('version/:nodeSchemaVersionId')
   findVersionById(
@@ -147,7 +150,25 @@ export class NodeSchemaController {
     );
   }
 
-  @Roles('Admin')
+  @Roles(RolesType.$authenticated)
+  @ApiOperation({ title: 'Get workflows for a node schema' })
+  @Get('version/:nodeSchemaVersionId/workflows')
+  findByNodeSchemaVersionId(
+    @Req() request,
+    @Param('nodeSchemaVersionId', new RequiredPipe())
+    nodeSchemaVersionId: string,
+  ): Promise<WorkflowDto[]> {
+    const activeOrganization = request.user.activeOrganization;
+    if (!activeOrganization) {
+      throw new BadRequestException('no active organization specified.');
+    }
+    return this.workflowService.findByNodeSchemaVersionId(
+      activeOrganization.id,
+      nodeSchemaVersionId,
+    );
+  }
+
+  @Roles(RolesType.$authenticated)
   @ApiOperation({ title: 'Get node schema and its latest schema version' })
   @Get(':nodeSchemaId')
   findById(
@@ -161,7 +182,7 @@ export class NodeSchemaController {
     return this.nodeSchemaService.findById(activeOrganization.id, nodeSchemaId);
   }
 
-  @Roles('Admin')
+  @Roles(RolesType.$authenticated)
   @ApiOperation({ title: 'look up a node schema by name' })
   @Get('search/:nodeSchemaName')
   findByName(

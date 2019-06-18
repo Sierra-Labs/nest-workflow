@@ -13,8 +13,15 @@ import { NodeSchemaController } from './node-schema.controller';
 import { NodeSchemaService } from './node-schema.service';
 import { NodeController } from './node.controller';
 import { NodeService } from './node.service';
+import { WorkflowService } from '../workflow/workflow.service';
+import { WorkflowVersion } from '../entities/workflow-version.entity';
+import { Workflow } from '../entities/workflow.entity';
 
 const defaultProviders = [
+  {
+    provide: 'WorkflowService',
+    useClass: WorkflowService,
+  },
   {
     provide: 'NodeService',
     useClass: NodeService,
@@ -37,7 +44,15 @@ const defaultProviders = [
   },
 ];
 @Module({
-  imports: [TypeOrmModule.forFeature([NodeSchema, NodeSchemaVersion, Node])],
+  imports: [
+    TypeOrmModule.forFeature([
+      NodeSchema,
+      NodeSchemaVersion,
+      Node,
+      Workflow,
+      WorkflowVersion,
+    ]),
+  ],
   controllers: [NodeController, NodeSchemaController, NodeDataController],
   providers: defaultProviders,
 })

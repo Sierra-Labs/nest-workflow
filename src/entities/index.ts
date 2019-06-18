@@ -14,3 +14,5 @@ export * from './user-organization.entity';
 export * from './user.entity';
 export * from './view-template-version.entity';
 export * from './view-template.entity';
+export * from './workflow-version.entity';
+export * from './workflow.entity';
