@@ -6,7 +6,13 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@sierralabs/nest-utils';
 
-import { AttributeValue, ReferenceType, User, Attribute } from '../entities';
+import {
+  AttributeValue,
+  ReferenceType,
+  User,
+  Attribute,
+  WorkflowTrigger,
+} from '../entities';
 import { NodeSchemaVersion } from '../entities/node-schema-version.entity';
 import { Node } from '../entities/node.entity';
 import { AttributeType } from './attributes';
@@ -20,6 +26,8 @@ import {
   NodeFindOptions,
   NodeService,
 } from './node.service';
+import { WorkflowService } from '../workflow';
+import { WorkflowMachine } from '../workflow/workflow.machine';
 
 export interface NodeDataDto {
   nodeId?: string;
@@ -34,6 +42,7 @@ export class NodeDataService {
     protected readonly nodeRepository: Repository<Node>,
     protected readonly nodeSchemaService: NodeSchemaService,
     protected readonly nodeService: NodeService,
+    protected readonly workflowService: WorkflowService,
     protected readonly configService: ConfigService,
     protected readonly attributeService: AttributeService,
     protected readonly sequenceAttributeService: SequenceAttributeService,
@@ -606,14 +615,49 @@ export class NodeDataService {
     nodeDataDto: NodeDataDto,
     user: User,
   ): Promise<NodeDataDto> {
+    let node = await this.nodeService.findById(
+      user.activeOrganization.id,
+      nodeDataDto.nodeId,
+    );
+    if (!node) {
+      throw new BadRequestException('Node not found.');
+    }
+    const workflows = await this.workflowService.findByNodeSchemaVersionId(
+      user.activeOrganization.id,
+      node.nodeSchemaVersionId,
+    );
     // save in a SQL transaction
-    let node;
     await this.entityManager.transaction(async transactionalEntityManager => {
-      node = await this.updateWithTransaction(
-        transactionalEntityManager,
-        nodeDataDto,
-        user,
-      );
+      let hasRunWorkflow = false;
+      if (workflows && workflows.length > 0) {
+        for (const workflow of workflows) {
+          if (workflow.trigger === WorkflowTrigger.Update) {
+            const workflowMachine = new WorkflowMachine();
+            workflow.config.context = {
+              nodeDataService: this,
+              transactionalEntityManager,
+              user,
+              node,
+              nodeSchemaDto: node.nodeSchemaVersion,
+              nodeDataDto,
+            };
+            // console.log('running workflow', workflow.id);
+            const results = await workflowMachine.run(workflow.config);
+            // TODO: handdle error states
+            // console.log('nodeDataService workflow results', results);
+            hasRunWorkflow = true;
+          }
+        }
+      }
+      if (!hasRunWorkflow) {
+        // if no workflow has been run then update
+        node = await this.updateWithTransaction(
+          transactionalEntityManager,
+          node,
+          nodeDataDto,
+          user,
+        );
+      }
     });
     return this.findById(
       user.activeOrganization.id,
@@ -622,18 +666,12 @@ export class NodeDataService {
     );
   }
 
-  protected async updateWithTransaction(
+  public async updateWithTransaction(
     transactionalEntityManager: EntityManager,
+    node: Node,
     nodeDataDto: NodeDataDto,
     user: User,
   ): Promise<Node> {
-    const node = await this.nodeService.findById(
-      user.activeOrganization.id,
-      nodeDataDto.nodeId,
-    );
-    if (!node) {
-      throw new BadRequestException('Node not found.');
-    }
     const updateNode = new Node();
     updateNode.id = node.id;
     updateNode.modifiedBy = user;
@@ -735,8 +773,13 @@ export class NodeDataService {
         user,
       );
       sourceNodeDataDto[referenceAttributeName] = node.id;
+      const sourceNode = await this.nodeService.findById(
+        user.activeOrganization.id,
+        sourceNodeDataDto.nodeId,
+      );
       await this.updateWithTransaction(
         transactionalEntityManager,
+        sourceNode,
         sourceNodeDataDto,
         user,
       );

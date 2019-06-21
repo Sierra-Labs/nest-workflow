@@ -73,11 +73,11 @@ export class WorkflowVersion {
   position: number;
 
   @ApiModelPropertyOptional()
-  @Column('jsonb', { nullable: true })
+  @Column('json', { nullable: true })
   config: any;
 
   @ApiModelPropertyOptional()
-  @Column('jsonb', { nullable: true })
+  @Column('json', { nullable: true })
   sampleData: any;
 
   @CreateDateColumn({ select: false })

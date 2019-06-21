@@ -151,7 +151,7 @@ export class WorkflowService {
       workflowVersion.trigger = workflowDto.trigger;
     }
     if (workflowDto.config) {
-      workflowVersion.trigger = workflowDto.config;
+      workflowVersion.config = workflowDto.config;
     }
     if (workflowDto.sampleData) {
       workflowVersion.sampleData = workflowDto.sampleData;
