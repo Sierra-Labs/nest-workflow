@@ -33,7 +33,8 @@ export class FileController {
     );
   }
 
-  @Roles(RolesType.$authenticated)
+  // TODO: secure via querystring auth token
+  // @Roles(RolesType.$authenticated)
   @ApiOperation({ title: 'Proxy the media file from S3' })
   @Get()
   public proxyFile(
