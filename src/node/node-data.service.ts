@@ -93,7 +93,7 @@ export class NodeDataService {
     // next get the the reference attribute node values
     // (doing this in a second query so that results returned are not compounded)
     let nodeReferences = [];
-    if (options.includeReferences) {
+    if (options.includeReferences || options.relations) {
       nodeReferences = await this.findNodeReferences(
         organizationId,
         nodeSchemaDto,
@@ -158,20 +158,73 @@ export class NodeDataService {
       // for attributes with reference nodes get the reference nodes
       .innerJoinAndSelect(
         'attributeValue.referenceNode',
-        'referenceNode',
-        '"referenceNode".is_deleted = false',
+        'referenceNode0',
+        '"referenceNode0".is_deleted = false',
       )
       .innerJoinAndSelect(
-        'referenceNode.attributeValues',
-        'referenceNodeAttributeValue',
-        '"referenceNodeAttributeValue".is_deleted = false',
+        'referenceNode0.attributeValues',
+        'referenceNodeAttributeValue0',
+        '"referenceNodeAttributeValue0".is_deleted = false',
       )
       .innerJoinAndSelect(
-        'referenceNodeAttributeValue.attribute',
-        'referenceNodeAttribute',
-        '"referenceNodeAttribute".is_deleted = false',
+        'referenceNodeAttributeValue0.attribute',
+        'referenceNodeAttribute0',
+        '"referenceNodeAttribute0".is_deleted = false',
       );
     this.addFindWhere(query, organizationId, nodeSchemaDto, options);
+    if (options.relations) {
+      // filter by specified relations
+      const referenceAttributeNames = [];
+      const subReferenceAttributeNames = [];
+      for (const relation of options.relations) {
+        // traverse the sub-relationship tree
+        const relationPath = relation.split('.'); // supports dot notation
+        if (!options.includeReferences) {
+          // limit relations if not including all references
+          referenceAttributeNames.push(relationPath[0]);
+        }
+        if (relationPath.length > 1) {
+          // sub-relationships
+          relationPath.forEach((attributeName, index) => {
+            if (index === 0) {
+              return; // skip first immediate child attribute item as handled above
+            }
+            if (!subReferenceAttributeNames[index]) {
+              // add nested query for each tree leaf (only once)
+              subReferenceAttributeNames[index] = [];
+              query
+                .leftJoinAndSelect(
+                  `referenceNodeAttributeValue${index - 1}.referenceNode`,
+                  `referenceNode${index}`,
+                  `"referenceNode${index}".is_deleted = false AND "referenceNodeAttribute${index -
+                    1}"."name" IN (:...attributeNames)`,
+                  {
+                    attributeNames: subReferenceAttributeNames[index],
+                  },
+                )
+                .leftJoinAndSelect(
+                  `referenceNode${index}.attributeValues`,
+                  `referenceNodeAttributeValue${index}`,
+                  `"referenceNodeAttributeValue${index}".is_deleted = false`,
+                )
+                .leftJoinAndSelect(
+                  `referenceNodeAttributeValue${index}.attribute`,
+                  `referenceNodeAttribute${index}`,
+                  `"referenceNodeAttribute${index}".is_deleted = false`,
+                );
+            }
+            // only get sub reference nodes for specified attribute name
+            subReferenceAttributeNames[index].push(attributeName);
+          });
+        }
+      }
+      if (referenceAttributeNames.length > 0) {
+        // if filtering by specific relationships (i.e !includeAllReferences)
+        query.andWhere('"attribute"."name" IN (:...referenceAttributeNames)', {
+          referenceAttributeNames,
+        });
+      }
+    }
     // console.log('node with reference attributes query: ', query.getSql());
     const nodes = await query.getMany();
     const normalizedNodes = [];
@@ -495,8 +548,17 @@ export class NodeDataService {
             ] = noramlizedReferenceNode;
           }
         } else {
-          nodeDataDto[attributeValue.attribute.name] =
-            attributeValue[fieldName];
+          if (
+            attributeValue.attribute.type === AttributeType.Enumeration &&
+            attributeValue.attribute.options.isMultiSelect
+          ) {
+            // multi-select always get jsonValue
+            nodeDataDto[attributeValue.attribute.name] =
+              attributeValue.jsonValue;
+          } else {
+            nodeDataDto[attributeValue.attribute.name] =
+              attributeValue[fieldName];
+          }
         }
       }
     }
@@ -843,7 +905,12 @@ export class NodeDataService {
                   value && value.nodeId ? value.nodeId : null;
               }
             } else {
-              attributeValueDto[fieldName] = value;
+              if (value instanceof Array && fieldName === 'textValue') {
+                attributeValueDto.jsonValue = value;
+                attributeValueDto[fieldName] = value.join(', ');
+              } else {
+                attributeValueDto[fieldName] = value;
+              }
             }
           }
           if (!attributeValueDto.id && !value) {
