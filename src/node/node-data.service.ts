@@ -904,6 +904,16 @@ export class NodeDataService {
                 attributeValueDto.referenceNodeId =
                   value && value.nodeId ? value.nodeId : null;
               }
+            } else if (attribute.type === AttributeType.File) {
+              attributeValueDto.jsonValue = value;
+              // store file name(s) in textValue for searchability
+              if (value instanceof Array) {
+                attributeValueDto.textValue = value
+                  .map(file => file.name)
+                  .join(', ');
+              } else {
+                attributeValueDto.textValue = value.name;
+              }
             } else {
               if (value instanceof Array && fieldName === 'textValue') {
                 attributeValueDto.jsonValue = value;
