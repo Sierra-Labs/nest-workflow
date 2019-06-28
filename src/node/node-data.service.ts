@@ -702,7 +702,7 @@ export class NodeDataService {
             await this.update(subNodeDataDto, user);
           }
         }
-      } else if (updateNodeDataDto[key].nodeId) {
+      } else if (updateNodeDataDto[key] && updateNodeDataDto[key].nodeId) {
         const updatedNodeData = await this.update(updateNodeDataDto[key], user);
         updateNodeDataDto[key] = updatedNodeData.nodeId;
       }
