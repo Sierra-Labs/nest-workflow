@@ -9,7 +9,7 @@ export const workflowServices = {
     return context.nodeDataService.updateWithTransaction(
       context.transactionalEntityManager,
       context.node,
-      context.nodeDataDto,
+      context.updateNodeDataDto,
       context.user,
     );
   },

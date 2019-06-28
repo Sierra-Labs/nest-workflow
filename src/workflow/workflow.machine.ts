@@ -30,7 +30,8 @@ export interface WorkflowContext {
   user: User;
   nodeSchemaDto: NodeSchemaDto;
   node: Node;
-  nodeDataDto: NodeDataDto;
+  nodeDataDto: NodeDataDto; // the dto used for validation checks
+  updateNodeDataDto: NodeDataDto; // the dto used for update
   errors?: WorkflowContextError[];
 }
 

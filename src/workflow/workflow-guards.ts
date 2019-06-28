@@ -19,7 +19,11 @@ export const workflowGuards = {
   },
   matchProperty: (context, event, guardMeta) => {
     const propertyValue = _.get(context.nodeDataDto, guardMeta.cond.property);
-    return context.nodeDataDto && propertyValue === guardMeta.cond.value;
+    if (guardMeta.cond.value) {
+      return context.nodeDataDto && propertyValue === guardMeta.cond.value;
+    } else if (guardMeta.cond.not && guardMeta.cond.not.value) {
+      return context.nodeDataDto && propertyValue !== guardMeta.cond.not.value;
+    }
   },
   setPropertyError: (context, event, guardMeta) => {
     if (!context.errors) {

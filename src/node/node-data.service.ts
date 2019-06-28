@@ -509,8 +509,12 @@ export class NodeDataService {
     organizationId: number,
     nodeSchemaName: string,
     nodeId: string,
+    options?: NodeFindOptions,
   ): Promise<NodeDataDto> {
-    const results = await this.find(organizationId, nodeSchemaName, { nodeId });
+    const results = await this.find(organizationId, nodeSchemaName, {
+      nodeId,
+      ...options,
+    });
     return results[0][0];
   }
 
@@ -686,12 +690,39 @@ export class NodeDataService {
   }
 
   public async update(
-    nodeDataDto: NodeDataDto,
+    updateNodeDataDto: NodeDataDto,
     user: User,
   ): Promise<NodeDataDto> {
+    // recursive update
+    const keys = Object.keys(updateNodeDataDto);
+    for (const key of keys) {
+      if (updateNodeDataDto[key] && updateNodeDataDto[key] instanceof Array) {
+        for (const subNodeDataDto of updateNodeDataDto[key]) {
+          if (subNodeDataDto && subNodeDataDto.nodeId) {
+            await this.update(subNodeDataDto, user);
+          }
+        }
+      } else if (updateNodeDataDto[key].nodeId) {
+        const updatedNodeData = await this.update(updateNodeDataDto[key], user);
+        updateNodeDataDto[key] = updatedNodeData.nodeId;
+      }
+    }
+
     let node = await this.nodeService.findById(
       user.activeOrganization.id,
-      nodeDataDto.nodeId,
+      updateNodeDataDto.nodeId,
+    );
+    // TODO: need a better way to handle workflow validation checks
+    // currently since we are passing only deltas for updateNodeDataDto
+    // we need to get the complete NodeDataDto for workflow validation
+    const nodeDataDto = this.findById(
+      user.activeOrganization.id,
+      node.nodeSchemaVersion.name,
+      updateNodeDataDto.nodeId,
+      {
+        includeBackReferences: true,
+        includeReferences: true,
+      },
     );
     if (!node) {
       throw new BadRequestException('Node not found.');
@@ -714,6 +745,7 @@ export class NodeDataService {
               node,
               nodeSchemaDto: node.nodeSchemaVersion,
               nodeDataDto,
+              updateNodeDataDto,
             };
             // console.log('running workflow', workflow.id);
             const results = await workflowMachine.run(workflow.config);
@@ -728,7 +760,7 @@ export class NodeDataService {
         node = await this.updateWithTransaction(
           transactionalEntityManager,
           node,
-          nodeDataDto,
+          updateNodeDataDto,
           user,
         );
       }
@@ -892,14 +924,6 @@ export class NodeDataService {
             attributeId: attribute.id,
           };
           const fieldName = this.getAttributeValueFieldNameByType(attribute);
-          console.log(
-            'value',
-            value,
-            'attributeValues.length',
-            attributeValues.length,
-            'default',
-            attribute.options.default,
-          );
           if (!value && attributeValues.length > 0) {
             continue; // no data for attribute
           } else if (
