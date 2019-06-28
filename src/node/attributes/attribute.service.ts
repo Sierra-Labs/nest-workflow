@@ -73,13 +73,15 @@ export class AttributeService {
       isValueChange = true;
     }
 
-    // TODO: check for if more than one attribute value is being added (i.e. in attribute reference situation)
-    attributeValue = await transactionalEntityManager.save(attributeValue);
-    // createa log entry for the attribute value
-    await this.createAttributeValueLog(
-      transactionalEntityManager,
-      attributeValue,
-    );
+    if (isValueChange) {
+      // TODO: check for if more than one attribute value is being added (i.e. in attribute reference situation)
+      attributeValue = await transactionalEntityManager.save(attributeValue);
+      // createa log entry for the attribute value
+      await this.createAttributeValueLog(
+        transactionalEntityManager,
+        attributeValue,
+      );
+    }
     return attributeValue;
   }
 

@@ -715,7 +715,7 @@ export class NodeDataService {
     // TODO: need a better way to handle workflow validation checks
     // currently since we are passing only deltas for updateNodeDataDto
     // we need to get the complete NodeDataDto for workflow validation
-    const nodeDataDto = this.findById(
+    const nodeDataDto = await this.findById(
       user.activeOrganization.id,
       node.nodeSchemaVersion.name,
       updateNodeDataDto.nodeId,
@@ -747,10 +747,11 @@ export class NodeDataService {
               nodeDataDto,
               updateNodeDataDto,
             };
-            // console.log('running workflow', workflow.id);
             const results = await workflowMachine.run(workflow.config);
-            // TODO: handdle error states
-            // console.log('nodeDataService workflow results', results);
+            if (results.context && results.context.errors) {
+              // TODO: refine error handling
+              throw results.context.errors;
+            }
             hasRunWorkflow = true;
           }
         }
