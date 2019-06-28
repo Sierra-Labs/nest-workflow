@@ -146,6 +146,22 @@ export class NodeDataController {
   }
 
   @Roles(RolesType.$authenticated)
+  @ApiOperation({ title: 'Bulk update nodes' })
+  @Put()
+  public async updateMultiple(
+    @Req() request,
+    @Body() nodeDataDtos: NodeDataDto[],
+  ): Promise<NodeDataDto> {
+    if (!request.user.activeOrganization) {
+      throw new BadRequestException('no active organization specified.');
+    }
+
+    // TODO: Check Node Write Permissions
+
+    return this.nodeDataService.updateMultiple(nodeDataDtos, request.user);
+  }
+
+  @Roles(RolesType.$authenticated)
   @ApiOperation({
     title: 'Creates a reference node and updates the source node attribute',
   })

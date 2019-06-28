@@ -42,20 +42,37 @@ export class AttributeService {
       attributeValue.id = attributeValueDto.id;
       attributeValue.createdBy = node.modifiedBy;
     }
-    // TODO: check for unchanged attribute values and ignore rather then
-    // saving and then creating an audit log when nothing changed
+
     attributeValue.nodeId = node.id;
     attributeValue.attributeId = attributeValueDto.attributeId;
-    attributeValue.textValue = attributeValueDto.textValue;
-    attributeValue.numberValue = attributeValueDto.numberValue;
-    attributeValue.dateTimeValue = attributeValueDto.dateTimeValue;
-    attributeValue.dateValue = attributeValueDto.dateValue;
-    // TODO: validate and format timeValue (HH:MM:SS) otherwise db error
-    attributeValue.timeValue = attributeValueDto.timeValue;
-    attributeValue.jsonValue = attributeValueDto.jsonValue;
-    attributeValue.referenceNodeId = attributeValueDto.referenceNodeId;
-    attributeValue.modifiedBy = node.modifiedBy;
-    attributeValue.isDeleted = attributeValueDto.isDeleted;
+
+    // check for unchanged attribute values and ignore rather then save
+    let isValueChange = false;
+    if (
+      attributeValue.textValue !== attributeValueDto.textValue ||
+      attributeValue.numberValue !== attributeValueDto.numberValue ||
+      attributeValue.dateTimeValue !== attributeValueDto.dateTimeValue ||
+      attributeValue.dateValue !== attributeValueDto.dateValue ||
+      attributeValue.timeValue !== attributeValueDto.timeValue ||
+      (attributeValue.jsonValue &&
+        attributeValueDto.jsonValue &&
+        JSON.stringify(attributeValue.jsonValue) !==
+          JSON.stringify(attributeValueDto.jsonValue)) ||
+      attributeValue.referenceNodeId !== attributeValueDto.referenceNodeId
+    ) {
+      attributeValue.textValue = attributeValueDto.textValue;
+      attributeValue.numberValue = attributeValueDto.numberValue;
+      attributeValue.dateTimeValue = attributeValueDto.dateTimeValue;
+      attributeValue.dateValue = attributeValueDto.dateValue;
+      // TODO: validate and format timeValue (HH:MM:SS) otherwise db error
+      attributeValue.timeValue = attributeValueDto.timeValue;
+      attributeValue.jsonValue = attributeValueDto.jsonValue;
+      attributeValue.referenceNodeId = attributeValueDto.referenceNodeId;
+      attributeValue.modifiedBy = node.modifiedBy;
+      attributeValue.isDeleted = attributeValueDto.isDeleted;
+      isValueChange = true;
+    }
+
     // TODO: check for if more than one attribute value is being added (i.e. in attribute reference situation)
     attributeValue = await transactionalEntityManager.save(attributeValue);
     // createa log entry for the attribute value

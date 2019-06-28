@@ -673,6 +673,18 @@ export class NodeDataService {
     return node;
   }
 
+  public async updateMultiple(
+    nodeDataDtos: NodeDataDto[],
+    user: User,
+  ): Promise<NodeDataDto[]> {
+    // TODO: Implement bulk updates using a transaction
+    const results = [];
+    for (const nodeDataDto of nodeDataDtos) {
+      results.push(await this.update(nodeDataDto, user));
+    }
+    return results;
+  }
+
   public async update(
     nodeDataDto: NodeDataDto,
     user: User,
@@ -762,8 +774,8 @@ export class NodeDataService {
     updateNode.modifiedBy = user;
     node.modifiedBy = user; // needed for attribute values
     await this.entityManager.transaction(async transactionalEntityManager => {
-      await transactionalEntityManager.save(node);
-      this.attributeService.deleteAttributeValue(
+      await transactionalEntityManager.save(updateNode);
+      await this.attributeService.deleteAttributeValue(
         transactionalEntityManager,
         nodeId,
         user,
@@ -880,6 +892,14 @@ export class NodeDataService {
             attributeId: attribute.id,
           };
           const fieldName = this.getAttributeValueFieldNameByType(attribute);
+          console.log(
+            'value',
+            value,
+            'attributeValues.length',
+            attributeValues.length,
+            'default',
+            attribute.options.default,
+          );
           if (!value && attributeValues.length > 0) {
             continue; // no data for attribute
           } else if (
@@ -889,7 +909,7 @@ export class NodeDataService {
           ) {
             // Default attribute value available so use it
             attributeValueDto[fieldName] = attribute.options.default;
-          } else if (value || value == null) {
+          } else if (value || value === null) {
             if (attributeValues.length > 0) {
               attributeValueDto.id = attributeValues[0].id;
             }
@@ -923,7 +943,7 @@ export class NodeDataService {
               }
             }
           }
-          if (!attributeValueDto.id && !value) {
+          if (!attributeValueDto.id && !attributeValueDto[fieldName]) {
             // don't insert null values into database
             continue;
           }
