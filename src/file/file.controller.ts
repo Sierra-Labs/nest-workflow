@@ -8,8 +8,9 @@ import {
   Req,
   Res,
   Next,
+  ForbiddenException,
 } from '@nestjs/common';
-import { Roles, RolesType } from '@sierralabs/nest-identity';
+import { Roles, RolesType, AuthService } from '@sierralabs/nest-identity';
 import { ApiUseTags, ApiOperation } from '@nestjs/swagger';
 import { RequiredPipe } from '@sierralabs/nest-utils';
 import { FileService } from './file.service';
@@ -18,7 +19,9 @@ import { FilePresignedDto, FileCreatePresignedDto } from './file.dto';
 @ApiUseTags('Files')
 @Controller('files')
 export class FileController {
-  constructor(protected readonly fileService: FileService) {}
+  constructor(
+    protected readonly fileService: FileService,
+  ) {}
 
   @Roles(RolesType.$authenticated)
   @ApiOperation({ title: 'Create Presigned Url for S3' })
@@ -33,9 +36,8 @@ export class FileController {
     );
   }
 
-  // TODO: secure via querystring auth token
-  // @Roles(RolesType.$authenticated)
-  @ApiOperation({ title: 'Proxy the media file from S3' })
+  @Roles(RolesType.$authenticated)
+  @ApiOperation({ title: 'Proxy the file from S3' })
   @Get()
   public proxyFile(
     @Query('key') key: string,
@@ -43,6 +45,15 @@ export class FileController {
     @Res() response,
     @Next() next,
   ): any {
+    // const token = request.query.token;
+    // if (!token) {
+    //   throw new ForbiddenException('Authorization token required.');
+    // }
+    // try {
+    //   this.authService.verifyToken(token);
+    // } catch (error) {
+    //   throw new ForbiddenException('Invalid authorization token.');
+    // }
     return this.fileService.proxyFile(key, request, response, next);
   }
 }
