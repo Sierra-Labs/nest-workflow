@@ -434,7 +434,7 @@ export class NodeDataService {
                   THEN "attributeValue"."reference_node_id" IN (:...values) END`,
                 { name: key, values: whereClause[key] },
               );
-            } else {
+            } else if (whereClause[key].length > 0) {
               // multi-select search (i.e. array of text values)
               query.andWhere(
                 `CASE
