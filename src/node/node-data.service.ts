@@ -410,14 +410,40 @@ export class NodeDataService {
                 THEN "attributeValue"."number_value" = :value END`,
               { name: key, value: whereClause[key] },
             );
-          } else if (validator.isUUID(whereClause[key])) {
+          } else if (
+            typeof whereClause[key] === 'string' &&
+            validator.isUUID(whereClause[key] as string)
+          ) {
+            // reference search
             query.andWhere(
               `CASE
               WHEN "attribute"."name" = :name AND "attribute"."type" = 'reference'
                 THEN "attributeValue"."reference_node_id" = :value END`,
               { name: key, value: whereClause[key] },
             );
+          } else if (whereClause[key] instanceof Array) {
+            // found array in where clause search
+            if (
+              whereClause[key].length > 0 &&
+              validator.isUUID(whereClause[key][0])
+            ) {
+              // multi reference search
+              query.andWhere(
+                `CASE
+                WHEN "attribute"."name" = :name AND "attribute"."type" = 'reference'
+                  THEN "attributeValue"."reference_node_id" IN (:...values) END`,
+                { name: key, values: whereClause[key] },
+              );
+            } else {
+              // multi-select search (i.e. array of text values)
+              query.andWhere(
+                `CASE
+                  WHEN "attribute"."name" = :name THEN "attributeValue"."text_value" IN (:...values) END`,
+                { name: key, values: whereClause[key] },
+              );
+            }
           } else {
+            // default to regular text search
             query.andWhere(
               `CASE
               WHEN "attribute"."name" = :name THEN "attributeValue"."text_value" = :value END`,

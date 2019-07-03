@@ -17,7 +17,7 @@ import { SequenceAttributeService } from './attributes/sequence-attribute.servic
 import { NodeDto, AttributeValueDto } from './node.dto';
 
 export interface NodeAttributeWhereClause {
-  [attributeName: string]: string;
+  [attributeName: string]: string | string[];
 }
 
 /**
