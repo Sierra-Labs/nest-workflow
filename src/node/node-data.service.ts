@@ -2,7 +2,12 @@ import { Validator } from 'class-validator';
 import * as _ from 'lodash';
 import { EntityManager, Repository, SelectQueryBuilder } from 'typeorm';
 
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  HttpException,
+  HttpStatus,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@sierralabs/nest-utils';
 
@@ -770,13 +775,19 @@ export class NodeDataService {
               user,
               node,
               nodeSchemaDto: node.nodeSchemaVersion,
-              nodeDataDto,
+              nodeDataDto: { ...nodeDataDto, ...updateNodeDataDto },
               updateNodeDataDto,
             };
             const results = await workflowMachine.run(workflow.config);
             if (results.context && results.context.errors) {
               // TODO: refine error handling
-              throw results.context.errors;
+              throw new HttpException(
+                {
+                  status: HttpStatus.BAD_REQUEST,
+                  errors: results.context.errors,
+                },
+                400,
+              );
             }
             hasRunWorkflow = true;
           }
