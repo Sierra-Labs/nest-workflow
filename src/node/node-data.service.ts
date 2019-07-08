@@ -767,7 +767,7 @@ export class NodeDataService {
       let hasRunWorkflow = false;
       if (workflows && workflows.length > 0) {
         for (const workflow of workflows) {
-          if (workflow.trigger === WorkflowTrigger.Update) {
+          if (workflow.triggers.includes(WorkflowTrigger.Update)) {
             const workflowMachine = new WorkflowMachine();
             workflow.config.context = {
               nodeDataService: this,

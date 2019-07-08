@@ -65,8 +65,8 @@ export class WorkflowVersion {
   nodeSchemaVersion: NodeSchemaVersion;
 
   @ApiModelProperty()
-  @Column('text')
-  trigger: WorkflowTrigger;
+  @Column('text', { array: true })
+  triggers: WorkflowTrigger[];
 
   @ApiModelProperty()
   @Column('int', { default: 0 })

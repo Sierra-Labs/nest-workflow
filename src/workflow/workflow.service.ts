@@ -108,7 +108,7 @@ export class WorkflowService {
     workflowVersion.label = workflowDto.label;
     workflowVersion.name = workflowDto.name;
     workflowVersion.nodeSchemaVersionId = workflowDto.nodeSchemaVersionId;
-    workflowVersion.trigger = workflowDto.trigger;
+    workflowVersion.triggers = workflowDto.triggers;
     workflowVersion.position = workflowDto.position;
     workflowVersion.config = workflowDto.config;
     workflowVersion.sampleData = workflowDto.sampleData;
@@ -147,8 +147,8 @@ export class WorkflowService {
     if (workflowDto.label) {
       workflowVersion.label = workflowDto.label;
     }
-    if (workflowDto.trigger) {
-      workflowVersion.trigger = workflowDto.trigger;
+    if (workflowDto.triggers) {
+      workflowVersion.triggers = workflowDto.triggers;
     }
     if (workflowDto.config) {
       workflowVersion.config = workflowDto.config;

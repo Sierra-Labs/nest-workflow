@@ -8,7 +8,7 @@ export class WorkflowDto {
   name: string;
   label: string;
   nodeSchemaVersionId: string;
-  trigger: WorkflowTrigger;
+  triggers: WorkflowTrigger[];
   position: number;
   config: any;
   sampleData: any;
