@@ -5,11 +5,15 @@ const logger = new Logger('WorkflowServices');
 
 export const workflowServices = {
   update: async (context: WorkflowContext, event): Promise<any> => {
-    console.log('workflowServices updateWithTransaction');
-    return context.nodeDataService.updateWithTransaction(
+    // deprecate (make sure no longer used in workflows before removing)
+    return await workflowServices.upsert(context, event);
+  },
+  upsert: async (context: WorkflowContext, event): Promise<any> => {
+    console.log('workflowServices upsertWithoutWorkflow');
+    return await context.nodeDataService.upsertWithoutWorkflow(
       context.transactionalEntityManager,
-      context.node,
-      context.updateNodeDataDto,
+      context.nodeSchemaDto,
+      context.upsertNodeDataDto,
       context.user,
     );
   },

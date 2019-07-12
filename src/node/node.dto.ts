@@ -1,8 +1,9 @@
 import { User } from '../entities/user.entity';
 
 export class AttributeValueDto {
-  id?: string;
+  nodeId: string;
   attributeId: string;
+  id?: string;
   textValue?: string;
   numberValue?: number;
   dateTimeValue?: Date;

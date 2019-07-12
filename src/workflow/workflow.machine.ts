@@ -29,9 +29,9 @@ export interface WorkflowContext {
   // reference to the user initiating the workflow
   user: User;
   nodeSchemaDto: NodeSchemaDto;
-  node: Node;
   nodeDataDto: NodeDataDto; // the dto used for validation checks
-  updateNodeDataDto: NodeDataDto; // the dto used for update
+  upsertNodeDataDto: NodeDataDto; // the dto used for upsert
+  originalNodeDataDto: NodeDataDto; // The original nodeDataDto for comparison
   errors?: WorkflowContextError[];
 }
 

@@ -213,176 +213,176 @@ export class NodeService {
     );
   }
 
-  public async create(nodeDto: NodeDto): Promise<Node> {
-    const nodeSchemaVersion = await this.entityManager
-      .createQueryBuilder(NodeSchemaVersion, 'nodeSchemaVersion')
-      .leftJoinAndSelect(
-        'nodeSchemaVersion.attributes',
-        'attributes',
-        '"attributes".is_deleted = false',
-      )
-      .innerJoin('nodeSchemaVersion.nodeSchema', 'nodeSchema')
-      .where('"nodeSchema".organization_id = :organizationId', {
-        organizationId: nodeDto.organizationId,
-      })
-      .andWhere('"nodeSchemaVersion".id = :nodeSchemaVersionId', {
-        nodeSchemaVersionId: nodeDto.versionId,
-      })
-      .getOne();
-    if (!nodeSchemaVersion) {
-      throw new BadRequestException('Node Schema not found.');
-    }
-    let node = new Node();
-    node.nodeSchemaVersionId = nodeDto.versionId;
-    node.createdBy = nodeDto.createdBy;
-    node.modifiedBy = nodeDto.modifiedBy;
+  // public async create(nodeDto: NodeDto): Promise<Node> {
+  //   const nodeSchemaVersion = await this.entityManager
+  //     .createQueryBuilder(NodeSchemaVersion, 'nodeSchemaVersion')
+  //     .leftJoinAndSelect(
+  //       'nodeSchemaVersion.attributes',
+  //       'attributes',
+  //       '"attributes".is_deleted = false',
+  //     )
+  //     .innerJoin('nodeSchemaVersion.nodeSchema', 'nodeSchema')
+  //     .where('"nodeSchema".organization_id = :organizationId', {
+  //       organizationId: nodeDto.organizationId,
+  //     })
+  //     .andWhere('"nodeSchemaVersion".id = :nodeSchemaVersionId', {
+  //       nodeSchemaVersionId: nodeDto.versionId,
+  //     })
+  //     .getOne();
+  //   if (!nodeSchemaVersion) {
+  //     throw new BadRequestException('Node Schema not found.');
+  //   }
+  //   let node = new Node();
+  //   node.nodeSchemaVersionId = nodeDto.versionId;
+  //   node.createdBy = nodeDto.createdBy;
+  //   node.modifiedBy = nodeDto.modifiedBy;
 
-    // save in a SQL transaction
-    await this.entityManager.transaction(async transactionalEntityManager => {
-      node = await transactionalEntityManager.save(node);
-      // assign the nodeSchemaVersion for use when processing attribute values
-      node.nodeSchemaVersion = nodeSchemaVersion;
-      await this.upsertAttributeValues(
-        transactionalEntityManager,
-        node,
-        nodeDto.attributeValues || [],
-      );
-      await this.upsertBackReferences(
-        transactionalEntityManager,
-        nodeDto,
-        node,
-        nodeDto.attributeValues || [],
-      );
-    });
-    return this.findById(nodeDto.organizationId, node.id);
-  }
+  //   // save in a SQL transaction
+  //   await this.entityManager.transaction(async transactionalEntityManager => {
+  //     node = await transactionalEntityManager.save(node);
+  //     // assign the nodeSchemaVersion for use when processing attribute values
+  //     node.nodeSchemaVersion = nodeSchemaVersion;
+  //     await this.upsertAttributeValues(
+  //       transactionalEntityManager,
+  //       node,
+  //       nodeDto.attributeValues || [],
+  //     );
+  //     await this.upsertBackReferences(
+  //       transactionalEntityManager,
+  //       nodeDto,
+  //       node,
+  //       nodeDto.attributeValues || [],
+  //     );
+  //   });
+  //   return this.findById(nodeDto.organizationId, node.id);
+  // }
 
-  public async update(nodeDto: NodeDto): Promise<Node> {
-    const node = await this.findById(nodeDto.organizationId, nodeDto.id);
-    if (!node) {
-      throw new BadRequestException('Node not found.');
-    }
-    // updated modified by
-    node.modifiedBy = nodeDto.modifiedBy;
+  // public async update(nodeDto: NodeDto): Promise<Node> {
+  //   const node = await this.findById(nodeDto.organizationId, nodeDto.id);
+  //   if (!node) {
+  //     throw new BadRequestException('Node not found.');
+  //   }
+  //   // updated modified by
+  //   node.modifiedBy = nodeDto.modifiedBy;
 
-    // save in a SQL transaction
-    await this.entityManager.transaction(async transactionalEntityManager => {
-      await transactionalEntityManager.save(node);
-      await this.upsertAttributeValues(
-        transactionalEntityManager,
-        node,
-        nodeDto.attributeValues || [],
-      );
-      await this.upsertBackReferences(
-        transactionalEntityManager,
-        nodeDto,
-        node,
-        nodeDto.attributeValues || [],
-      );
-    });
-    return this.findById(nodeDto.organizationId, node.id);
-  }
+  //   // save in a SQL transaction
+  //   await this.entityManager.transaction(async transactionalEntityManager => {
+  //     await transactionalEntityManager.save(node);
+  //     await this.upsertAttributeValues(
+  //       transactionalEntityManager,
+  //       node,
+  //       nodeDto.attributeValues || [],
+  //     );
+  //     await this.upsertBackReferences(
+  //       transactionalEntityManager,
+  //       nodeDto,
+  //       node,
+  //       nodeDto.attributeValues || [],
+  //     );
+  //   });
+  //   return this.findById(nodeDto.organizationId, node.id);
+  // }
 
-  protected async upsertAttributeValues(
-    transactionalEntityManager: EntityManager,
-    node: Node,
-    attributeValueDtos: AttributeValueDto[],
-  ) {
-    // Loop through all attributes and see if there's needed processing
-    // (example: Sequence attributes need to be auto generated)
-    for (const attribute of node.nodeSchemaVersion.attributes) {
-      switch (attribute.type) {
-        case 'sequence':
-          await this.sequenceAttributeService.upsertAttributeValue(
-            transactionalEntityManager,
-            node,
-            // sequence generates attribute values so pass in the attribute id only
-            { attributeId: attribute.id },
-          );
-          break;
-        default:
-          // some attributes can have one or more attribute values (so filter)
-          const filteredAttributeValueDtos = _.filter(attributeValueDtos, {
-            attributeId: attribute.id,
-          });
-          if (
-            filteredAttributeValueDtos.length === 0 &&
-            attribute.options.default
-          ) {
-            // Default attribute value available so use it
-            const attributeValueDto: AttributeValueDto = {
-              attributeId: attribute.id,
-            };
-            // TODO: account for different types of default values for
-            // each attribute type
-            if (attribute.type === 'number') {
-              attributeValueDto.numberValue = attribute.options.default;
-            } else {
-              attributeValueDto.textValue = attribute.options.default;
-            }
-            await this.attributeService.upsertAttributeValue(
-              transactionalEntityManager,
-              node,
-              attributeValueDto,
-            );
-          } else {
-            for (const attributeValueDto of filteredAttributeValueDtos) {
-              // if (attribute.type === 'reference') {
-              //   console.log(
-              //     'upsertAttributeValues() attributeValueDto.referenceNode',
-              //     attributeValueDto.referenceId,
-              //   );
-              // }
-              // Some attribute types have their own upserts
-              await this.attributeService.upsertAttributeValue(
-                transactionalEntityManager,
-                node,
-                attributeValueDto,
-              );
-            }
-          }
-      }
-    }
-  }
+  // protected async upsertAttributeValues(
+  //   transactionalEntityManager: EntityManager,
+  //   node: Node,
+  //   attributeValueDtos: AttributeValueDto[],
+  // ) {
+  //   // Loop through all attributes and see if there's needed processing
+  //   // (example: Sequence attributes need to be auto generated)
+  //   for (const attribute of node.nodeSchemaVersion.attributes) {
+  //     switch (attribute.type) {
+  //       case 'sequence':
+  //         await this.sequenceAttributeService.upsertAttributeValue(
+  //           transactionalEntityManager,
+  //           node,
+  //           // sequence generates attribute values so pass in the attribute id only
+  //           { attributeId: attribute.id },
+  //         );
+  //         break;
+  //       default:
+  //         // some attributes can have one or more attribute values (so filter)
+  //         const filteredAttributeValueDtos = _.filter(attributeValueDtos, {
+  //           attributeId: attribute.id,
+  //         });
+  //         if (
+  //           filteredAttributeValueDtos.length === 0 &&
+  //           attribute.options.default
+  //         ) {
+  //           // Default attribute value available so use it
+  //           const attributeValueDto: AttributeValueDto = {
+  //             attributeId: attribute.id,
+  //           };
+  //           // TODO: account for different types of default values for
+  //           // each attribute type
+  //           if (attribute.type === 'number') {
+  //             attributeValueDto.numberValue = attribute.options.default;
+  //           } else {
+  //             attributeValueDto.textValue = attribute.options.default;
+  //           }
+  //           await this.attributeService.upsertAttributeValue(
+  //             transactionalEntityManager,
+  //             node,
+  //             attributeValueDto,
+  //           );
+  //         } else {
+  //           for (const attributeValueDto of filteredAttributeValueDtos) {
+  //             // if (attribute.type === 'reference') {
+  //             //   console.log(
+  //             //     'upsertAttributeValues() attributeValueDto.referenceNode',
+  //             //     attributeValueDto.referenceId,
+  //             //   );
+  //             // }
+  //             // Some attribute types have their own upserts
+  //             await this.attributeService.upsertAttributeValue(
+  //               transactionalEntityManager,
+  //               node,
+  //               attributeValueDto,
+  //             );
+  //           }
+  //         }
+  //     }
+  //   }
+  // }
 
-  protected async upsertBackReferences(
-    transactionalEntityManager: EntityManager,
-    nodeDto: NodeDto,
-    node: Node,
-    attributeValueDtos: AttributeValueDto[],
-  ) {
-    if (!node.nodeSchemaVersion.attributeBackReferences) {
-      return;
-    }
-    // console.log(
-    //   'node.nodeSchemaVersion.attributeBackReferences',
-    //   node.nodeSchemaVersion.attributeBackReferences,
-    // );
-    for (const attribute of node.nodeSchemaVersion.attributeBackReferences) {
-      // console.log('processing back references attribute', attribute);
-      const filteredAttributeValueDtos = _.filter(attributeValueDtos, {
-        attributeId: attribute.id,
-      });
-      // console.log(
-      //   'found back references attribute value: ',
-      //   filteredAttributeValueDtos,
-      // );
-      for (const attributeValueDto of filteredAttributeValueDtos) {
-        // console.log(
-        //   'attributeValueDto.referenceNode',
-        //   attributeValueDto.referenceNode,
-        // );
-        attributeValueDto.referenceNode.organizationId = nodeDto.organizationId;
-        attributeValueDto.referenceNode.versionId =
-          attributeValueDto.referenceNode.nodeSchemaVersionId;
-        attributeValueDto.referenceNode.modifiedBy = nodeDto.modifiedBy;
-        if (attributeValueDto.referenceNode.id) {
-          await this.update(attributeValueDto.referenceNode);
-        } else {
-          attributeValueDto.referenceNode.createdBy = nodeDto.modifiedBy;
-          await this.create(attributeValueDto.referenceNode);
-        }
-      }
-    }
-  }
+  // protected async upsertBackReferences(
+  //   transactionalEntityManager: EntityManager,
+  //   nodeDto: NodeDto,
+  //   node: Node,
+  //   attributeValueDtos: AttributeValueDto[],
+  // ) {
+  //   if (!node.nodeSchemaVersion.attributeBackReferences) {
+  //     return;
+  //   }
+  //   // console.log(
+  //   //   'node.nodeSchemaVersion.attributeBackReferences',
+  //   //   node.nodeSchemaVersion.attributeBackReferences,
+  //   // );
+  //   for (const attribute of node.nodeSchemaVersion.attributeBackReferences) {
+  //     // console.log('processing back references attribute', attribute);
+  //     const filteredAttributeValueDtos = _.filter(attributeValueDtos, {
+  //       attributeId: attribute.id,
+  //     });
+  //     // console.log(
+  //     //   'found back references attribute value: ',
+  //     //   filteredAttributeValueDtos,
+  //     // );
+  //     for (const attributeValueDto of filteredAttributeValueDtos) {
+  //       // console.log(
+  //       //   'attributeValueDto.referenceNode',
+  //       //   attributeValueDto.referenceNode,
+  //       // );
+  //       attributeValueDto.referenceNode.organizationId = nodeDto.organizationId;
+  //       attributeValueDto.referenceNode.versionId =
+  //         attributeValueDto.referenceNode.nodeSchemaVersionId;
+  //       attributeValueDto.referenceNode.modifiedBy = nodeDto.modifiedBy;
+  //       if (attributeValueDto.referenceNode.id) {
+  //         await this.update(attributeValueDto.referenceNode);
+  //       } else {
+  //         attributeValueDto.referenceNode.createdBy = nodeDto.modifiedBy;
+  //         await this.create(attributeValueDto.referenceNode);
+  //       }
+  //     }
+  //   }
+  // }
 }

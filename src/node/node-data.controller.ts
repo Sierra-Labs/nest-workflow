@@ -102,11 +102,7 @@ export class NodeDataController {
 
     // TODO: Check Node Write Permissions
 
-    return this.nodeDataService.create(
-      nodeSchemaName,
-      nodeDataDto,
-      request.user,
-    );
+    return this.nodeDataService.recursiveUpsert(nodeDataDto, request.user);
   }
 
   @Roles(RolesType.$authenticated)
@@ -142,7 +138,7 @@ export class NodeDataController {
     // TODO: Check Node Write Permissions
 
     nodeDataDto.nodeId = nodeId;
-    return this.nodeDataService.update(nodeDataDto, request.user);
+    return this.nodeDataService.recursiveUpsert(nodeDataDto, request.user);
   }
 
   @Roles(RolesType.$authenticated)
@@ -158,7 +154,7 @@ export class NodeDataController {
 
     // TODO: Check Node Write Permissions
 
-    return this.nodeDataService.updateMultiple(nodeDataDtos, request.user);
+    return this.nodeDataService.upsertMultiple(nodeDataDtos, request.user);
   }
 
   @Roles(RolesType.$authenticated)

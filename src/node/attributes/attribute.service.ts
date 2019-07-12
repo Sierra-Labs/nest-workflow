@@ -8,6 +8,7 @@ import { AttributeValue } from '../../entities/attribute-value.entity';
 import { Node } from '../../entities/node.entity';
 import { AttributeValueDto } from '../node.dto';
 import { User } from '../../entities';
+import { NodeSchemaDto } from '../node-schema.dto';
 
 @Injectable()
 export class AttributeService {
@@ -19,69 +20,55 @@ export class AttributeService {
    */
   public async upsertAttributeValue(
     transactionalEntityManager: EntityManager,
-    node: Node,
+    nodeSchemaDto: NodeSchemaDto, // although not used in this method; it can be used in subclassed implementation (see sequence attribute)
     attributeValueDto: AttributeValueDto,
+    user: User,
   ): Promise<AttributeValue> {
-    let attributeValue: AttributeValue;
-    if (attributeValueDto.id) {
-      // verify attribute value belongs to node
-      attributeValue = _.find(node.attributeValues, {
-        id: attributeValueDto.id,
-      });
-      if (attributeValue && attributeValue.nodeId !== node.id) {
-        throw new BadRequestException(
-          `Attempt to update an attribute value (${
-            attributeValue.id
-          }) that is not associated to the node (${node.id}).`,
-        );
-      }
-    }
-    if (!attributeValue) {
-      attributeValue = new AttributeValue();
-      // client side level generate Ids due to reference nodes
-      attributeValue.id = attributeValueDto.id;
-      attributeValue.createdBy = node.modifiedBy;
-    }
-
-    attributeValue.nodeId = node.id;
-    attributeValue.attributeId = attributeValueDto.attributeId;
-
-    // check for unchanged attribute values and ignore rather then save
-    let isValueChange = false;
-    if (
-      attributeValue.textValue !== attributeValueDto.textValue ||
-      attributeValue.numberValue !== attributeValueDto.numberValue ||
-      attributeValue.dateTimeValue !== attributeValueDto.dateTimeValue ||
-      attributeValue.dateValue !== attributeValueDto.dateValue ||
-      attributeValue.timeValue !== attributeValueDto.timeValue ||
-      (attributeValue.jsonValue &&
-        attributeValueDto.jsonValue &&
-        JSON.stringify(attributeValue.jsonValue) !==
-          JSON.stringify(attributeValueDto.jsonValue)) ||
-      attributeValue.referenceNodeId !== attributeValueDto.referenceNodeId
-    ) {
-      attributeValue.textValue = attributeValueDto.textValue;
-      attributeValue.numberValue = attributeValueDto.numberValue;
-      attributeValue.dateTimeValue = attributeValueDto.dateTimeValue;
-      attributeValue.dateValue = attributeValueDto.dateValue;
-      // TODO: validate and format timeValue (HH:MM:SS) otherwise db error
-      attributeValue.timeValue = attributeValueDto.timeValue;
-      attributeValue.jsonValue = attributeValueDto.jsonValue;
-      attributeValue.referenceNodeId = attributeValueDto.referenceNodeId;
-      attributeValue.modifiedBy = node.modifiedBy;
-      attributeValue.isDeleted = attributeValueDto.isDeleted;
-      isValueChange = true;
-    }
-
-    if (isValueChange) {
-      // TODO: check for if more than one attribute value is being added (i.e. in attribute reference situation)
-      attributeValue = await transactionalEntityManager.save(attributeValue);
-      // createa log entry for the attribute value
-      await this.createAttributeValueLog(
-        transactionalEntityManager,
-        attributeValue,
+    if (!attributeValueDto.nodeId) {
+      throw new BadRequestException(
+        'upsertAttributeValue error; nodeId not provided for attributeValueDto.',
       );
     }
+
+    // TODO implement bulk attribute insert/update, which verifies node association when bulk updating
+
+    // let attributeValue: AttributeValue;
+    // if (attributeValueDto.id) {
+    //   // verify attribute value belongs to node
+    //   attributeValue = _.find(nodeSchemaDto.attributeValues, {
+    //     id: attributeValueDto.id,
+    //   });
+    //   if (attributeValue && attributeValue.nodeId !== node.id) {
+    //     throw new BadRequestException(
+    //       `Attempt to update an attribute value (${
+    //         attributeValue.id
+    //       }) that is not associated to the node (${node.id}).`,
+    //     );
+    //   }
+    // }
+    // if (!attributeValue) {
+    //   attributeValue = new AttributeValue();
+    //   // client side level generate Ids due to reference nodes
+    //   attributeValue.id = attributeValueDto.id;
+    //   attributeValue.createdBy = node.modifiedBy;
+    // }
+
+    // TODO: in bulk update only update if data changed
+    // TODO: validate and format timeValue (HH:MM:SS) otherwise db error
+
+    let attributeValue = new AttributeValue();
+    Object.assign(attributeValue, attributeValueDto);
+    attributeValue.modifiedBy = user;
+    if (!attributeValue.id) {
+      attributeValue.createdBy = user;
+    }
+    // TODO: check if more than one attribute value is being added (i.e. in attribute reference situation)
+    attributeValue = await transactionalEntityManager.save(attributeValue);
+    // createa log entry for the attribute value
+    await this.createAttributeValueLog(
+      transactionalEntityManager,
+      attributeValue,
+    );
     return attributeValue;
   }
 

@@ -51,49 +51,49 @@ export class NodeController {
     return this.nodeService.findById(activeOrganization.id, nodeId);
   }
 
-  @Roles(RolesType.$authenticated)
-  @ApiOperation({ title: 'Create a Node' })
-  @UseInterceptors(new OwnerInterceptor(['createdBy', 'modifiedBy'], true))
-  @Post(':nodeSchemaVersionId')
-  public async create(
-    @Req() request,
-    @Param('nodeSchemaVersionId', new RequiredPipe())
-    nodeSchemaVersionId: string,
-    @Body() nodeDto: NodeDto,
-  ): Promise<Node> {
-    const activeOrganization = request.user.activeOrganization;
-    if (!activeOrganization) {
-      throw new BadRequestException('no active organization specified.');
-    }
+  // @Roles(RolesType.$authenticated)
+  // @ApiOperation({ title: 'Create a Node' })
+  // @UseInterceptors(new OwnerInterceptor(['createdBy', 'modifiedBy'], true))
+  // @Post(':nodeSchemaVersionId')
+  // public async create(
+  //   @Req() request,
+  //   @Param('nodeSchemaVersionId', new RequiredPipe())
+  //   nodeSchemaVersionId: string,
+  //   @Body() nodeDto: NodeDto,
+  // ): Promise<Node> {
+  //   const activeOrganization = request.user.activeOrganization;
+  //   if (!activeOrganization) {
+  //     throw new BadRequestException('no active organization specified.');
+  //   }
 
-    // TODO: Check Node Write Permissions
+  //   // TODO: Check Node Write Permissions
 
-    nodeDto.versionId = nodeSchemaVersionId;
-    nodeDto.organizationId = activeOrganization.id;
-    nodeDto.createdBy = request.user.id;
-    nodeDto.modifiedBy = request.user.modifiedBy;
-    return this.nodeService.create(nodeDto);
-  }
+  //   nodeDto.versionId = nodeSchemaVersionId;
+  //   nodeDto.organizationId = activeOrganization.id;
+  //   nodeDto.createdBy = request.user.id;
+  //   nodeDto.modifiedBy = request.user.modifiedBy;
+  //   return this.nodeService.create(nodeDto);
+  // }
 
-  @Roles(RolesType.$authenticated)
-  @ApiOperation({ title: 'Update a Node' })
-  @UseInterceptors(new OwnerInterceptor(['modifiedBy'], true))
-  @Put(':nodeId')
-  public async update(
-    @Req() request,
-    @Param('nodeId', new RequiredPipe()) nodeId: string,
-    @Body() nodeDto: NodeDto,
-  ): Promise<Node> {
-    const activeOrganization = request.user.activeOrganization;
-    if (!activeOrganization) {
-      throw new BadRequestException('no active organization specified.');
-    }
+  // @Roles(RolesType.$authenticated)
+  // @ApiOperation({ title: 'Update a Node' })
+  // @UseInterceptors(new OwnerInterceptor(['modifiedBy'], true))
+  // @Put(':nodeId')
+  // public async update(
+  //   @Req() request,
+  //   @Param('nodeId', new RequiredPipe()) nodeId: string,
+  //   @Body() nodeDto: NodeDto,
+  // ): Promise<Node> {
+  //   const activeOrganization = request.user.activeOrganization;
+  //   if (!activeOrganization) {
+  //     throw new BadRequestException('no active organization specified.');
+  //   }
 
-    // TODO: Check Node Write Permissions
+  //   // TODO: Check Node Write Permissions
 
-    nodeDto.organizationId = activeOrganization.id;
-    nodeDto.id = nodeId;
-    nodeDto.modifiedBy = request.user.modifiedBy;
-    return this.nodeService.update(nodeDto);
-  }
+  //   nodeDto.organizationId = activeOrganization.id;
+  //   nodeDto.id = nodeId;
+  //   nodeDto.modifiedBy = request.user.modifiedBy;
+  //   return this.nodeService.update(nodeDto);
+  // }
 }

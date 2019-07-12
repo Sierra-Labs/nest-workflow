@@ -5,18 +5,25 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 
 import { AttributeValue } from '../../entities/attribute-value.entity';
 import { Attribute } from '../../entities/attribute.entity';
-import { Node } from '../../entities/node.entity';
 import { AttributeValueDto } from '../node.dto';
 import { AttributeService } from './attribute.service';
+import { NodeSchemaDto } from '../node-schema.dto';
+import { User } from '../../entities';
 
 @Injectable()
 export class SequenceAttributeService extends AttributeService {
   public async upsertAttributeValue(
     transactionalEntityManager: EntityManager,
-    node: Node,
+    nodeSchemaDto: NodeSchemaDto,
     attributeValueDto: AttributeValueDto,
+    user: User,
   ): Promise<AttributeValue> {
-    const attribute = _.find(node.nodeSchemaVersion.attributes, {
+    if (!attributeValueDto.nodeId) {
+      throw new BadRequestException(
+        'upsertAttributeValue error; nodeId not provided for attributeValueDto.',
+      );
+    }
+    const attribute = _.find(nodeSchemaDto.attributes, {
       id: attributeValueDto.attributeId,
     }) as Attribute;
     let attributeValue = await transactionalEntityManager.findOne(
@@ -24,7 +31,7 @@ export class SequenceAttributeService extends AttributeService {
       {
         where: {
           attributeId: attribute.id,
-          nodeId: node.id,
+          nodeId: attributeValueDto.nodeId,
         },
       },
     );
@@ -64,13 +71,13 @@ export class SequenceAttributeService extends AttributeService {
     }
     attributeValue = new AttributeValue();
     attributeValue.attributeId = attribute.id;
-    attributeValue.nodeId = node.id;
+    attributeValue.nodeId = attributeValueDto.nodeId;
     attributeValue.numberValue = result.lastSequenceValue;
     attributeValue.textValue = `${attribute.options.prefix}${
       result.lastSequenceValue
     }`;
-    attributeValue.createdBy = node.modifiedBy;
-    attributeValue.modifiedBy = node.modifiedBy;
+    attributeValue.createdBy = user;
+    attributeValue.modifiedBy = user;
     attributeValue = await transactionalEntityManager.save(attributeValue);
     await this.createAttributeValueLog(
       transactionalEntityManager,

@@ -19,10 +19,85 @@ export const workflowGuards = {
   },
   matchProperty: (context, event, guardMeta) => {
     const propertyValue = _.get(context.nodeDataDto, guardMeta.cond.property);
-    if (guardMeta.cond.value) {
+    if (guardMeta.cond.hasOwnProperty('value')) {
       return context.nodeDataDto && propertyValue === guardMeta.cond.value;
-    } else if (guardMeta.cond.not && guardMeta.cond.not.value) {
+    } else if (
+      guardMeta.cond.not &&
+      guardMeta.cond.not.hasOwnProperty('value')
+    ) {
       return context.nodeDataDto && propertyValue !== guardMeta.cond.not.value;
+    } else if (
+      guardMeta.cond.not &&
+      guardMeta.cond.not.hasOwnProperty('property')
+    ) {
+      return (
+        context.nodeDataDto &&
+        propertyValue !== context.nodeDataDto[guardMeta.cond.not.property]
+      );
+    } else if (
+      guardMeta.cond.moreThan &&
+      guardMeta.cond.moreThan.hasOwnProperty('value')
+    ) {
+      return (
+        context.nodeDataDto && propertyValue > guardMeta.cond.moreThan.value
+      );
+    } else if (
+      guardMeta.cond.moreThan &&
+      guardMeta.cond.moreThan.hasOwnProperty('property')
+    ) {
+      return (
+        context.nodeDataDto &&
+        propertyValue > context.nodeDataDto[guardMeta.cond.moreThan.property]
+      );
+    } else if (
+      guardMeta.cond.moreThanOrEqual &&
+      guardMeta.cond.moreThanOrEqual.hasOwnProperty('value')
+    ) {
+      return (
+        context.nodeDataDto &&
+        propertyValue >= guardMeta.cond.moreThanOrEqual.value
+      );
+    } else if (
+      guardMeta.cond.moreThanOrEqual &&
+      guardMeta.cond.moreThanOrEqual.hasOwnProperty('property')
+    ) {
+      return (
+        context.nodeDataDto &&
+        propertyValue >=
+          context.nodeDataDto[guardMeta.cond.moreThanOrEqual.property]
+      );
+    } else if (
+      guardMeta.cond.lessThan &&
+      guardMeta.cond.lessThan.hasOwnProperty('value')
+    ) {
+      return (
+        context.nodeDataDto && propertyValue < guardMeta.cond.lessThan.value
+      );
+    } else if (
+      guardMeta.cond.lessThan &&
+      guardMeta.cond.lessThan.hasOwnProperty('property')
+    ) {
+      return (
+        context.nodeDataDto &&
+        propertyValue < context.nodeDataDto[guardMeta.cond.lessThan.property]
+      );
+    } else if (
+      guardMeta.cond.lessThanOrEqual &&
+      guardMeta.cond.lessThanOrEqual.hasOwnProperty('value')
+    ) {
+      return (
+        context.nodeDataDto &&
+        propertyValue <= guardMeta.cond.lessThanOrEqual.value
+      );
+    } else if (
+      guardMeta.cond.lessThanOrEqual &&
+      guardMeta.cond.lessThanOrEqual.hasOwnProperty('property')
+    ) {
+      return (
+        context.nodeDataDto &&
+        propertyValue <=
+          context.nodeDataDto[guardMeta.cond.lessThanOrEqual.property]
+      );
     }
   },
   setPropertyError: (context, event, guardMeta) => {
@@ -41,9 +116,14 @@ export const workflowGuards = {
     }
     if (guardMeta.cond.properties) {
       for (const property of guardMeta.cond.properties) {
-        if (!context.nodeDataDto[property]) {
+        if (!context.nodeDataDto.hasOwnProperty(property)) {
           return false;
         }
+      }
+      return true;
+    } else if (guardMeta.cond.property) {
+      if (!context.nodeDataDto.hasOwnProperty(guardMeta.cond.property)) {
+        return false;
       }
       return true;
     }

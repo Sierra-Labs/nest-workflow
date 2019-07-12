@@ -1,5 +1,7 @@
 import { WorkflowTrigger } from '../entities/workflow-version.entity';
 import { User } from '../entities';
+import { MachineConfig } from 'xstate';
+import { WorkflowContext } from './workflow.machine';
 
 export class WorkflowDto {
   id?: string;
@@ -10,7 +12,7 @@ export class WorkflowDto {
   nodeSchemaVersionId: string;
   triggers: WorkflowTrigger[];
   position: number;
-  config: any;
+  config: MachineConfig<WorkflowContext, any, any>;
   sampleData: any;
   createdBy?: User;
   modifiedBy?: User;
