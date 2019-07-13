@@ -1054,7 +1054,7 @@ export class NodeDataService {
               // store file name(s) in textValue for searchability
               if (value instanceof Array) {
                 attributeValueDto.textValue = value
-                  .map(file => file.name)
+                  .map(file => (file ? file.name : file))
                   .join(', ');
               } else {
                 attributeValueDto.textValue = value.name;

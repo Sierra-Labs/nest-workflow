@@ -68,6 +68,15 @@ export class WorkflowMachine {
         // service.stop();
         // resolve(results);
       });
+      // service.onChange(results => {
+      //   console.log('onChange', results);
+      // });
+      // service.onSend(results => {
+      //   console.log('onSend', results);
+      // });
+      // service.onStop(() => {
+      //   console.log('onStop');
+      // });
       service.onDone(results => {
         console.log('onDone', results);
         service.stop();
