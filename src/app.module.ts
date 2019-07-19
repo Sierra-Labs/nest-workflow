@@ -15,6 +15,7 @@ import {
 import * as configSchema from '../config/config-schema.json';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { ExportModule } from './export/export.module';
 import { FileModule } from './file/file.module';
 import { NodeModule } from './node/node.module';
 import { OrganizationModule } from './organization/organization.module';
@@ -60,6 +61,7 @@ const config = configService.get('database');
     ViewModule,
     WorkflowModule,
     FileModule,
+    ExportModule,
   ],
   controllers: [AppController],
   providers: [AppService],

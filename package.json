@@ -1,6 +1,6 @@
 {
   "name": "@sierralabs/nest-workflow",
-  "version": "0.1.22",
+  "version": "0.1.24",
   "description": "",
   "author": "Sierra Labs",
   "license": "Sierra Labs",
@@ -40,8 +40,10 @@
     "@sierralabs/nest-utils": "0.0.16",
     "aws-sdk": "^2.413.0",
     "class-transformer": "^0.2.0",
+    "docxtemplater": "^3.13.6",
     "dotenv": "^7.0.0",
     "express": "^4.16.4",
+    "jszip": "^2.6.1",
     "mime-types": "^2.1.24",
     "reflect-metadata": "^0.1.12",
     "rimraf": "^2.6.2",
