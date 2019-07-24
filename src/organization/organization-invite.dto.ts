@@ -1,8 +1,6 @@
-import { OrganizationPermissionType } from './organization-permission';
-
 export interface CreateOrganizationInviteDto {
   email: string;
-  permission: OrganizationPermissionType;
+  permissions: string[];
 }
 
 export interface OrganizationInviteDto {

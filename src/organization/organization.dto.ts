@@ -1,6 +1,5 @@
 import { ApiModelProperty, ApiModelPropertyOptional } from '@nestjs/swagger';
 import { User } from '../entities/user.entity';
-import { OrganizationPermissionType } from './organization-permission';
 
 export class CreateOrganizationDto {
   @ApiModelProperty()
@@ -27,7 +26,7 @@ export class UserOrganizationDto {
   @ApiModelProperty()
   email: string;
   @ApiModelProperty()
-  permission: OrganizationPermissionType;
+  permissions: string[];
   @ApiModelProperty()
   created: Date;
 }
@@ -40,7 +39,7 @@ export class UserOrganizationInviteDto {
   @ApiModelProperty()
   email: string;
   @ApiModelProperty()
-  permission: OrganizationPermissionType;
+  permissions: string[];
   @ApiModelProperty()
   created: Date;
 }
@@ -53,5 +52,5 @@ export class GetOrganizationUserDto {
 }
 
 export class UpdateUserOrganizationDto {
-  permission: OrganizationPermissionType;
+  permissions: string[];
 }

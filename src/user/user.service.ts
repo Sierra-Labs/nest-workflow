@@ -15,7 +15,6 @@ import { ConfigService } from '@sierralabs/nest-utils';
 
 import { UserOrganization } from '../entities/user-organization.entity';
 import { User } from '../entities/user.entity';
-import { OrganizationPermissionType } from '../organization/organization-permission';
 import { CreateOrganizationDto } from '../organization/organization.dto';
 import { OrganizationService } from '../organization/organization.service';
 import { RolesService } from '../roles/roles.service';
@@ -139,7 +138,7 @@ export class UserService extends BaseUserService {
       userOrganization.user = user;
       userOrganization.createdBy = organizationDto.createdBy;
       userOrganization.organization = organization;
-      userOrganization.permission = OrganizationPermissionType.Admin;
+      userOrganization.permissions = ['Admin'];
       newUserOrganization = await transactionalEntityManager.save(
         userOrganization,
       );

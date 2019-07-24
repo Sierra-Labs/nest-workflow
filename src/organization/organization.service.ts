@@ -24,11 +24,9 @@ import {
   CreateOrganizationInviteDto,
   OrganizationInviteDto,
 } from './organization-invite.dto';
-import { OrganizationPermissionType } from './organization-permission';
 import {
   CreateOrganizationDto,
   GetOrganizationUserDto,
-  UserOrganizationDto,
 } from './organization.dto';
 
 @Injectable()
@@ -105,7 +103,7 @@ export class OrganizationService {
         'u.first_name as "firstName"',
         'u.last_name as "lastName"',
         'u.email as "email"',
-        'uo.permission as "permission"',
+        'uo.permissions as "permissions"',
         'uo.created as "created"',
       ])
       .innerJoin('uo.user', 'u')
@@ -118,7 +116,7 @@ export class OrganizationService {
         'oi.id as "organizationInviteId"',
         'oi.organization_id as "organizationId"',
         'oi.email as "email"',
-        'oi.permission as "permission"',
+        'oi.permissions as "permissions"',
         'oi.created as "created"',
       ])
       .where(
@@ -197,7 +195,7 @@ export class OrganizationService {
   ): Promise<boolean> {
     const userOrganization = _.find(user.userOrganizations, {
       organization: { id: organizationId } as any,
-      permission: OrganizationPermissionType.Admin,
+      permissions: ['Admin'],
     }) as UserOrganization;
     if (!userOrganization) {
       throw new UnauthorizedException();
@@ -210,7 +208,7 @@ export class OrganizationService {
       organizationInvite.organization = new Organization();
       organizationInvite.organization.id = organizationId;
       organizationInvite.email = organizationInviteDto.email;
-      organizationInvite.permission = organizationInviteDto.permission;
+      organizationInvite.permissions = organizationInviteDto.permissions;
       organizationInvite.createdBy = user;
       try {
         organizationInvite = await this.organizationInviteRepository.save(
@@ -264,9 +262,9 @@ export class OrganizationService {
     userOrganization.user = user;
     userOrganization.organization = organization;
     userOrganization.organizationInvite = organizationInvite;
-    userOrganization.permission = organizationInvite
-      ? organizationInvite.permission
-      : OrganizationPermissionType.Write;
+    userOrganization.permissions = organizationInvite
+      ? organizationInvite.permissions
+      : [];
     userOrganization.createdBy = user;
     await this.entityManager.save(userOrganization);
     return true;
@@ -317,7 +315,7 @@ export class OrganizationService {
   public async updateUserPermission(
     organizationId: number,
     userId: number,
-    permission: OrganizationPermissionType,
+    permissions: string[],
   ): Promise<boolean> {
     await this.entityManager.update(
       UserOrganization,
@@ -325,7 +323,7 @@ export class OrganizationService {
         organization: { id: organizationId },
         user: { id: userId },
       },
-      { permission },
+      { permissions },
     );
     return true;
   }
@@ -333,7 +331,7 @@ export class OrganizationService {
   public async updateInvitePermission(
     organizationId: number,
     organizationInviteId: number,
-    permission: OrganizationPermissionType,
+    permissions: string[],
   ): Promise<boolean> {
     // Adding organizationId to query enforces that the correct
     // record is updated (i.e. prevent accidentally updating an
@@ -344,7 +342,7 @@ export class OrganizationService {
         id: organizationInviteId,
         organization: { id: organizationId },
       },
-      { permission },
+      { permissions },
     );
     return true;
   }

@@ -12,7 +12,7 @@ import { Reflector } from '@nestjs/core';
 import { RolesGuard, RolesType } from '@sierralabs/nest-identity';
 
 import { User } from '../entities/user.entity';
-import { OrganizationPermissionType } from './organization-permission';
+import { UserOrganization } from '../entities';
 
 /**
  * Setup `@OrganizationPermission` decorator
@@ -92,21 +92,16 @@ export class OrganizationPermissionGuard extends RolesGuard
 
     // check if user has permission
     const permissions =
-      this.reflector.get<OrganizationPermissionType[]>(
-        'permissions',
-        handler,
-      ) || [];
+      this.reflector.get<string[]>('permissions', handler) || [];
 
     if (permissions.length === 0) {
       throw new UnprocessableEntityException('No permission specified.');
     }
+    const filteredUserOrganization = _.find(user.userOrganizations, {
+      organization: { id: organizationId } as any,
+    }) as UserOrganization;
     for (const permission of permissions) {
-      if (
-        _.find(user.userOrganizations, {
-          organization: { id: organizationId },
-          permission,
-        })
-      ) {
+      if (filteredUserOrganization.permissions.includes(permission)) {
         return true;
       }
     }

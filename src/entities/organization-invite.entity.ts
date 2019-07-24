@@ -10,7 +10,6 @@ import {
 
 import { ApiModelProperty, ApiModelPropertyOptional } from '@nestjs/swagger';
 
-import { OrganizationPermissionType } from '../organization/organization-permission';
 import { Organization } from './organization.entity';
 import { User } from './user.entity';
 
@@ -36,8 +35,8 @@ export class OrganizationInvite {
   @Column('citext')
   public email: string;
 
-  @Column('text')
-  permission: OrganizationPermissionType;
+  @Column('text', { array: true })
+  permissions: string[];
 
   @ApiModelPropertyOptional()
   @CreateDateColumn()

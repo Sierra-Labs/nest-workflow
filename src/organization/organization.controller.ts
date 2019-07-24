@@ -23,7 +23,6 @@ import { RequiredPipe } from '@sierralabs/nest-utils';
 
 import { Organization } from '../entities/organization.entity';
 import { CreateOrganizationInviteDto } from './organization-invite.dto';
-import { OrganizationPermissionType } from './organization-permission';
 import { OrganizationPermission } from './organization-permission.guard';
 import {
   CreateOrganizationDto,
@@ -59,7 +58,7 @@ export class OrganizationController {
     return this.organizationService.allowAutoJoin(domainName);
   }
 
-  @OrganizationPermission(OrganizationPermissionType.Admin)
+  @OrganizationPermission('Admin')
   @ApiOperation({ title: 'Invite a user to join the organization' })
   @Post(':id([0-9]+)/invite')
   public async invite(
@@ -85,7 +84,7 @@ export class OrganizationController {
     return this.organizationService.join(request.user, organizationId);
   }
 
-  @OrganizationPermission(OrganizationPermissionType.Admin)
+  @OrganizationPermission('Admin')
   @Get(':id([0-9]+)/users')
   @ApiOperation({
     title: 'Get users in an organization',
@@ -99,7 +98,7 @@ export class OrganizationController {
     return this.organizationService.getUsers(organizationId);
   }
 
-  @OrganizationPermission(OrganizationPermissionType.Admin)
+  @OrganizationPermission('Admin')
   @Put(':organizationId([0-9]+)/users/:userId([0-9]+)')
   @ApiOperation({ title: 'Update user permission' })
   public async updateUserPermission(
@@ -110,11 +109,11 @@ export class OrganizationController {
     return this.organizationService.updateUserPermission(
       organizationId,
       userId,
-      updateUserOrganizationDto.permission,
+      updateUserOrganizationDto.permissions,
     );
   }
 
-  @OrganizationPermission(OrganizationPermissionType.Admin)
+  @OrganizationPermission('Admin')
   @Put(':organizationId([0-9]+)/invite/:organizationInviteId([0-9]+)')
   @ApiOperation({ title: 'Update invite permission' })
   public async updateInvitePermission(
@@ -126,11 +125,11 @@ export class OrganizationController {
     return this.organizationService.updateInvitePermission(
       organizationId,
       organizationInviteId,
-      updateUserOrganizationDto.permission,
+      updateUserOrganizationDto.permissions,
     );
   }
 
-  @OrganizationPermission(OrganizationPermissionType.Admin)
+  @OrganizationPermission('Admin')
   @Delete(':organizationId([0-9]+)/users/:userId([0-9]+)')
   @ApiOperation({ title: 'Delete user from organization' })
   public async deleteUser(
@@ -140,7 +139,7 @@ export class OrganizationController {
     return this.organizationService.deleteUser(organizationId, userId);
   }
 
-  @OrganizationPermission(OrganizationPermissionType.Admin)
+  @OrganizationPermission('Admin')
   @Delete(':organizationId([0-9]+)/invite/:organizationInviteId([0-9]+)')
   @ApiOperation({ title: 'Delete invite' })
   public async deleteInvite(
