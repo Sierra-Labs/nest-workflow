@@ -212,7 +212,6 @@ export class NodeSchemaController {
     if (!activeOrganization) {
       throw new BadRequestException('no active organization specified.');
     }
-    console.log('getPermissions');
     return this.nodeSchemaService.getPermissions();
   }
 
