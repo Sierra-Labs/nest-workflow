@@ -13,26 +13,39 @@ import {
 import { ApiModelProperty, ApiModelPropertyOptional } from '@nestjs/swagger';
 
 import { User } from './user.entity';
+import { NodeSchema } from './node-schema.entity';
+
+export enum NodeSchemaPermissionType {
+  Read = 'read',
+  ReadWrite = 'read-write',
+  ReadWriteDelete = 'read-write-delete',
+}
 
 @Entity()
 @Unique(['nodeSchemaId', 'userNodeSchemaId'])
 export class NodeSchemaPermission {
   @ApiModelProperty()
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
-  @Column('uuid', {
-    comment: 'The node schema this version belongs to.',
-  })
+  @Column('uuid')
   public nodeSchemaId: string;
+
+  @ManyToOne(type => NodeSchema, { nullable: false })
+  @JoinColumn({ name: 'node_schema_id' })
+  nodeSchema: NodeSchema;
 
   @ApiModelProperty()
   @Column('uuid')
   public userNodeSchemaId: string;
 
+  @ManyToOne(type => NodeSchema, { nullable: false })
+  @JoinColumn({ name: 'user_node_schema_id' })
+  userNodeSchema: NodeSchema;
+
   @ApiModelProperty()
   @Column('text')
-  permission: string;
+  permission: NodeSchemaPermissionType;
 
   @ApiModelProperty()
   @Column({ default: false })
@@ -43,7 +56,7 @@ export class NodeSchemaPermission {
   created: Date;
 
   @ManyToOne(type => User, { nullable: false })
-  @JoinColumn({ name: 'createdBy' })
+  @JoinColumn({ name: 'created_by' })
   createdBy: User;
 
   @ApiModelPropertyOptional()
@@ -51,6 +64,6 @@ export class NodeSchemaPermission {
   modified: Date;
 
   @ManyToOne(type => User, { nullable: false })
-  @JoinColumn({ name: 'modifiedBy' })
+  @JoinColumn({ name: 'modified_by' })
   modifiedBy: User;
 }

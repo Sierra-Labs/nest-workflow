@@ -16,6 +16,7 @@ import { NodeService } from './node.service';
 import { WorkflowService } from '../workflow/workflow.service';
 import { WorkflowVersion } from '../entities/workflow-version.entity';
 import { Workflow } from '../entities/workflow.entity';
+import { NodeSchemaPermission } from '../entities/node-schema-permission.entity';
 
 const defaultProviders = [
   {
@@ -48,6 +49,7 @@ const defaultProviders = [
     TypeOrmModule.forFeature([
       NodeSchema,
       NodeSchemaVersion,
+      NodeSchemaPermission,
       Node,
       Workflow,
       WorkflowVersion,
