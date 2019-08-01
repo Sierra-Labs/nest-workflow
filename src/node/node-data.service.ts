@@ -208,9 +208,9 @@ export class NodeDataService {
                   `referenceNodeAttributeValue${index - 1}.referenceNode`,
                   `referenceNode${index}`,
                   `"referenceNode${index}".is_deleted = false AND "referenceNodeAttribute${index -
-                    1}"."name" IN (:...attributeNames)`,
+                    1}"."name" IN (:...attributeNames${index})`,
                   {
-                    attributeNames: subReferenceAttributeNames[index],
+                    [`attributeNames${index}`]: subReferenceAttributeNames[index],
                   },
                 )
                 .leftJoinAndSelect(
