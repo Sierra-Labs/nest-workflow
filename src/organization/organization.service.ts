@@ -195,7 +195,7 @@ export class OrganizationService {
   ): Promise<boolean> {
     const userOrganization = _.find(user.userOrganizations, {
       organization: { id: organizationId } as any,
-      permissions: ['Admin'],
+      // permissions: ['Admin'], // TODO: use new schema permission table
     }) as UserOrganization;
     if (!userOrganization) {
       throw new UnauthorizedException();
