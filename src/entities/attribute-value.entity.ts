@@ -117,7 +117,7 @@ export class AttributeValue {
   @JoinColumn({ name: 'created_by' })
   createdBy: User;
 
-  @UpdateDateColumn({ select: false })
+  @UpdateDateColumn()
   modified: Date;
 
   @ManyToOne(type => User, { nullable: false })

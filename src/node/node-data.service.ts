@@ -642,6 +642,13 @@ export class NodeDataService {
               attributeValue.attribute.name
             ] = noramlizedReferenceNode;
           }
+        }
+        if (attributeValue.attribute.type === AttributeType.Signature) {
+          // get signature modified date
+          nodeDataDto[attributeValue.attribute.name] = {
+            url: attributeValue.textValue,
+            date: attributeValue.modified,
+          };
         } else {
           if (
             attributeValue.attribute.type === AttributeType.Enumeration &&

@@ -7,5 +7,6 @@ export enum AttributeType {
   Reference = 'reference',
   File = 'file',
   Sequence = 'sequence',
+  Signature = 'signature',
   Boolean = 'boolean',
 }
