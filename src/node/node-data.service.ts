@@ -236,7 +236,11 @@ export class NodeDataService {
         });
       }
     }
-    // console.log('node with reference attributes query: ', query.getSql());
+    // console.log(
+    //   'node with reference attributes query: ',
+    //   query.getSql(),
+    //   query.getParameters(),
+    // );
     const nodes = await query.getMany();
     const normalizedNodes = [];
     for (const node of nodes) {
@@ -642,8 +646,7 @@ export class NodeDataService {
               attributeValue.attribute.name
             ] = noramlizedReferenceNode;
           }
-        }
-        if (attributeValue.attribute.type === AttributeType.Signature) {
+        } else if (attributeValue.attribute.type === AttributeType.Signature) {
           // get signature modified date
           nodeDataDto[attributeValue.attribute.name] = {
             url: attributeValue.textValue,
