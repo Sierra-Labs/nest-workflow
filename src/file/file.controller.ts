@@ -21,6 +21,7 @@ import { FilePresignedDto, FileCreatePresignedDto } from './file.dto';
 export class FileController {
   constructor(
     protected readonly fileService: FileService,
+    protected readonly authService: AuthService,
   ) {}
 
   @Roles(RolesType.$authenticated)
@@ -36,7 +37,6 @@ export class FileController {
     );
   }
 
-  @Roles(RolesType.$authenticated)
   @ApiOperation({ title: 'Proxy the file from S3' })
   @Get()
   public proxyFile(
@@ -45,15 +45,15 @@ export class FileController {
     @Res() response,
     @Next() next,
   ): any {
-    // const token = request.query.token;
-    // if (!token) {
-    //   throw new ForbiddenException('Authorization token required.');
-    // }
-    // try {
-    //   this.authService.verifyToken(token);
-    // } catch (error) {
-    //   throw new ForbiddenException('Invalid authorization token.');
-    // }
+    const token = request.query.token;
+    if (!token) {
+      throw new ForbiddenException('Authorization token required.');
+    }
+    try {
+      this.authService.verifyToken(token);
+    } catch (error) {
+      throw new ForbiddenException('Invalid authorization token.');
+    }
     return this.fileService.proxyFile(key, request, response, next);
   }
 }
