@@ -1070,6 +1070,7 @@ export class NodeDataService {
           break;
         default:
           // some attributes can have one or more attribute values (so filter)
+          const validator = new Validator();
           const filteredAttributeValues = _.filter(attributeValues, {
             attributeId: attribute.id,
           }) as AttributeValue[];
@@ -1096,7 +1097,6 @@ export class NodeDataService {
             if (attribute.type === AttributeType.Reference) {
               // reference value could be an object of the reference node or it could be the UUID of
               // the reference node
-              const validator = new Validator();
               if (validator.isUUID(value)) {
                 attributeValueDto.referenceNodeId = value;
               } else {
@@ -1112,6 +1112,11 @@ export class NodeDataService {
                   .join(', ');
               } else {
                 attributeValueDto.textValue = value.name;
+              }
+            } else if (attribute.type === AttributeType.Signature) {
+              // validate url string; otherwise ignore
+              if (validator.isURL(value)) {
+                attributeValueDto.textValue = value;
               }
             } else {
               if (value instanceof Array && fieldName === 'textValue') {
