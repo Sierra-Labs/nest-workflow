@@ -48,11 +48,14 @@ export class NodeDataController {
     if (!activeOrganization) {
       throw new BadRequestException('no active organization specified.');
     }
-
-    if (options) {
-      options = JSON.parse(options as string) as NodeFindOptions;
-    } else {
-      options = {} as NodeFindOptions;
+    try {
+      if (options) {
+        options = JSON.parse(options as string) as NodeFindOptions;
+      } else {
+        options = {} as NodeFindOptions;
+      }
+    } catch (error) {
+      throw error;
     }
     const maxSize = this.configService.get('pagination.maxPageSize') || 200;
     const defaultSize =
@@ -73,10 +76,21 @@ export class NodeDataController {
     @Req() request,
     @Param('nodeSchemaName', new RequiredPipe()) nodeSchemaName: string,
     @Param('nodeId', new RequiredPipe()) nodeId: string,
+    @Query('options') options?: NodeFindOptions | string,
   ): Promise<NodeDataDto> {
     const activeOrganization = request.user.activeOrganization;
     if (!activeOrganization) {
       throw new BadRequestException('no active organization specified.');
+    }
+
+    try {
+      if (options) {
+        options = JSON.parse(options as string) as NodeFindOptions;
+      } else {
+        options = {} as NodeFindOptions;
+      }
+    } catch (error) {
+      throw error;
     }
 
     // TODO: Check Node Read Permissions and what attributes can be returned
@@ -85,6 +99,7 @@ export class NodeDataController {
       activeOrganization.id,
       nodeSchemaName,
       nodeId,
+      options,
     );
   }
 
