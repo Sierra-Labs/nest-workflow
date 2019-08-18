@@ -53,7 +53,7 @@ export class SequenceAttributeService extends AttributeService {
       .select('MAX(number_value)::INTEGER  as "lastSequenceValue"')
       .where('attribute_id = :attributeId', { attributeId: attribute.id })
       .getRawOne();
-    if (!result && !result.lastSequenceValue) {
+    if (!result || !result.lastSequenceValue) {
       // first record so use start value
       result = { lastSequenceValue: attribute.options.start };
     } else {

@@ -65,32 +65,12 @@ export class NodeSchemaController {
     limit = Math.min(maxSize, limit || defaultSize);
     const offset = (page || 0) * limit;
 
-    const orderOptions = [
-      // 'id asc',
-      // 'id desc',
-      // 'name asc',
-      // 'name desc',
-      // 'type asc',
-      // 'type desc',
-      // 'created asc',
-      // 'created desc',
-      // 'modified asc',
-      // 'modified desc',
-    ];
-
-    if (orderOptions.indexOf(order) === -1) {
-      order = 'id asc';
-    }
-    const orderParts = order.split(' ');
-    const orderConfig = {};
-    orderConfig[orderParts[0]] = orderParts[1].toUpperCase();
-
     return this.nodeSchemaService.find(
       activeOrganization.id,
-      orderConfig,
       limit,
       offset,
-      '%' + (search || '') + '%',
+      order,
+      search,
       includeDeleted,
     );
   }
@@ -183,6 +163,20 @@ export class NodeSchemaController {
   }
 
   @Roles(RolesType.$authenticated)
+  @ApiOperation({ title: 'look up node schemas by type' })
+  @Get('type/:type')
+  findByType(
+    @Req() request,
+    @Param('type', new RequiredPipe()) type: string,
+  ): Promise<NodeSchemaDto[]> {
+    const activeOrganization = request.user.activeOrganization;
+    if (!activeOrganization) {
+      throw new BadRequestException('no active organization specified.');
+    }
+    return this.nodeSchemaService.findByType(activeOrganization.id, type);
+  }
+
+  @Roles(RolesType.$authenticated)
   @ApiOperation({ title: 'look up a node schema by name' })
   @Get('search/:nodeSchemaName')
   findByName(
@@ -213,7 +207,7 @@ export class NodeSchemaController {
     }
     nodeSchemaDto.organizationId = activeOrganization.id;
     nodeSchemaDto.createdBy = request.user.id;
-    nodeSchemaDto.modifiedBy = request.user.modifiedBy;
+    nodeSchemaDto.modifiedBy = request.user.id;
     return this.nodeSchemaService.create(nodeSchemaDto);
   }
 
@@ -232,7 +226,7 @@ export class NodeSchemaController {
     }
     nodeSchemaDto.organizationId = activeOrganization.id;
     nodeSchemaDto.id = id;
-    nodeSchemaDto.modifiedBy = request.user.modifiedBy;
+    nodeSchemaDto.modifiedBy = request.user.id;
     return this.nodeSchemaService.update(nodeSchemaDto);
   }
 }

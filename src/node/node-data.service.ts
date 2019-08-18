@@ -210,7 +210,9 @@ export class NodeDataService {
                   `"referenceNode${index}".is_deleted = false AND "referenceNodeAttribute${index -
                     1}"."name" IN (:...attributeNames${index})`,
                   {
-                    [`attributeNames${index}`]: subReferenceAttributeNames[index],
+                    [`attributeNames${index}`]: subReferenceAttributeNames[
+                      index
+                    ],
                   },
                 )
                 .leftJoinAndSelect(
@@ -707,8 +709,9 @@ export class NodeDataService {
       case AttributeType.List:
         return 'jsonValue';
       case AttributeType.Number:
-      case AttributeType.Boolean:
         return 'numberValue';
+      case AttributeType.Boolean:
+        return 'booleanValue';
       case AttributeType.Reference:
         return 'referenceNodeId';
       case AttributeType.Enumeration:
@@ -1080,16 +1083,19 @@ export class NodeDataService {
             nodeId: nodeDataDto.nodeId,
           };
           const fieldName = this.getAttributeValueFieldNameByType(attribute);
-          if (!value && filteredAttributeValues.length > 0) {
+          if (
+            (value === undefined || value === null) &&
+            filteredAttributeValues.length > 0
+          ) {
             continue; // no data for attribute
           } else if (
-            !value &&
+            (value === undefined || value === null) &&
             filteredAttributeValues.length === 0 &&
             attribute.options.default
           ) {
             // Default attribute value available so use it
             attributeValueDto[fieldName] = attribute.options.default;
-          } else if (value || value === null) {
+          } else if (value !== undefined) {
             if (filteredAttributeValues.length > 0) {
               attributeValueDto.id = filteredAttributeValues[0].id;
             }
@@ -1127,7 +1133,11 @@ export class NodeDataService {
               }
             }
           }
-          if (!attributeValueDto.id && !attributeValueDto[fieldName]) {
+          if (
+            !attributeValueDto.id &&
+            (attributeValueDto[fieldName] === null ||
+              attributeValueDto[fieldName] === undefined)
+          ) {
             // don't insert null values into database when creating new records
             continue;
           }

@@ -28,9 +28,9 @@ export class NodeSchemaService {
 
   public async find(
     organizationId: number,
-    order: any,
     limit: number = 100,
     offset: number = 0,
+    order: any,
     search: string,
     includeDeleted?: boolean,
   ): Promise<[FindNodeSchemaDto[], number]> {
@@ -74,24 +74,63 @@ export class NodeSchemaService {
         'latestVersion',
         '"latestVersion"."node_schema_id" = "nodeSchema"."id"',
       )
-      .where(
-        '"publishedVersion"."name" ILIKE :search OR "latestVersion"."name" ILIKE :search',
-        { search },
-      )
-      .andWhere('"nodeSchema".organization_id = :organizationId', {
+      .where('"nodeSchema".organization_id = :organizationId', {
         organizationId,
       });
+    if (search) {
+      query.andWhere(
+        '"publishedVersion"."name" ILIKE :search OR "latestVersion"."name" ILIKE :search',
+        { search: `%${search}%` },
+      );
+    }
 
     if (!includeDeleted) {
       query.andWhere('"nodeSchema".is_deleted = false');
     }
     const count = await query.getCount();
-    const results = await query
-      .orderBy(order)
-      .limit(limit)
-      .offset(offset)
-      .getRawMany();
+    query.limit(limit).offset(offset);
+    if (order) {
+      query.orderBy('"latestVersion"."name"');
+    } else {
+      query.orderBy('"latestVersionName"', 'ASC');
+    }
+    const results = await query.getRawMany();
     return [results, count];
+  }
+
+  public async findByType(
+    organizationId: number,
+    type: string,
+  ): Promise<NodeSchemaDto[]> {
+    const nodeSchemaVersions = await this.nodeSchemaVersionRepository
+      .createQueryBuilder('nodeSchemaVersion')
+      .leftJoinAndSelect('nodeSchemaVersion.nodeSchema', 'nodeSchema')
+      .leftJoinAndSelect(
+        'nodeSchemaVersion.attributes',
+        'attribute',
+        '"attribute".is_deleted = false',
+      )
+      // Add the back references from relationships
+      .leftJoinAndSelect(
+        'nodeSchemaVersion.attributeBackReferences',
+        'attributeBackReferences',
+        '"attributeBackReferences".is_deleted = false',
+      )
+      .leftJoinAndSelect(
+        'attributeBackReferences.nodeSchemaVersion',
+        'attributeBackReferenceNodeSchemaVersion',
+      )
+      .where('"nodeSchema".organization_id = :organizationId', {
+        organizationId,
+      })
+      .andWhere('"nodeSchemaVersion"."type" = :type', {
+        type,
+      })
+      .orderBy('"attribute".position', 'ASC')
+      .getMany();
+    return nodeSchemaVersions.map(nodeSchemaVersion =>
+      this.mapToNodeSchemaDto(nodeSchemaVersion),
+    );
   }
 
   public async findById(

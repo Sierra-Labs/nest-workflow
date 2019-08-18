@@ -63,6 +63,14 @@ export class AttributeValue {
   numberValue: number;
 
   @ApiModelPropertyOptional()
+  @Column('boolean', {
+    nullable: true,
+    comment:
+      'Depending on `attribute.type` the attribute value maybe stored as a boolean value.',
+  })
+  booleanValue: boolean;
+
+  @ApiModelPropertyOptional()
   @Column('timestamp', {
     nullable: true,
     comment:
