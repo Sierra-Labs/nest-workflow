@@ -4,7 +4,6 @@ import {
   Controller,
   Get,
   Param,
-  ParseIntPipe,
   Post,
   Put,
   Query,
@@ -16,12 +15,9 @@ import { OwnerInterceptor, Roles, RolesType } from '@sierralabs/nest-identity';
 import {
   ConfigService,
   ParseBooleanPipe,
-  ParseEntityPipe,
   RequiredPipe,
 } from '@sierralabs/nest-utils';
 
-import { NodeSchemaVersion } from '../entities/node-schema-version.entity';
-import { NodeSchema } from '../entities/node-schema.entity';
 import { Node } from '../entities/node.entity';
 import { WorkflowDto } from '../workflow/workflow.dto';
 import { WorkflowService } from '../workflow/workflow.service';
@@ -29,8 +25,6 @@ import { FindNodeSchemaDto, NodeSchemaDto } from './node-schema.dto';
 import { NodeSchemaService } from './node-schema.service';
 import { NodeFindOptions, NodeService } from './node.service';
 import { NodeSchemaPermissionDto } from './node-schema-permission.dto';
-import { labeledStatement } from 'babel-types';
-import { UserNodeSchemaPermissionDto } from './user-node-schema-permission.dto';
 
 @ApiUseTags('Node Schemas')
 @Controller('node-schemas')

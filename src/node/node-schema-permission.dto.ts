@@ -1,4 +1,11 @@
-import { UserNodeSchemaPermissionDto } from './user-node-schema-permission.dto';
+export class UserNodeSchemaPermissionDto {
+  nodeSchemaPermissionId?: string;
+  userNodeSchemaId: string;
+  name: string;
+  label: string;
+  permission: string;
+  deleted: boolean;
+}
 
 export class NodeSchemaPermissionDto {
   nodeSchemaId: string;

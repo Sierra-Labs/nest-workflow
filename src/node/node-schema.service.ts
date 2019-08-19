@@ -13,8 +13,10 @@ import { Attribute, ReferenceType } from '../entities/attribute.entity';
 import { User } from '../entities/user.entity';
 import { AttributeType } from './attributes';
 import { NodeSchemaPermission } from '../entities/node-schema-permission.entity';
-import { NodeSchemaPermissionDto } from './node-schema-permission.dto';
-import { UserNodeSchemaPermissionDto } from './user-node-schema-permission.dto';
+import {
+  NodeSchemaPermissionDto,
+  UserNodeSchemaPermissionDto,
+} from './node-schema-permission.dto';
 
 @Injectable()
 export class NodeSchemaService {
@@ -260,6 +262,7 @@ export class NodeSchemaService {
       .innerJoin('nodeSchema.versions', 'nodeSchemaVersion')
       .innerJoin('nodeSchemaPermissions.userNodeSchema', 'userNodeSchema')
       .innerJoin('userNodeSchema.versions', 'userNodeSchemaVersion')
+      .where('"nodeSchemaPermissions"."deleted" = false')
       .orderBy('nodeSchema.id')
       .getRawMany();
 
@@ -307,7 +310,7 @@ export class NodeSchemaService {
           nodeSchemaPermission.nodeSchemaId,
           userNodeSchemaPermission.userNodeSchemaId,
           userNodeSchemaPermission.permission,
-          userNodeSchemaPermission.deleted,
+          userNodeSchemaPermission.deleted || false,
           new Date(),
           user.id,
           new Date(),
@@ -330,7 +333,8 @@ export class NodeSchemaService {
     ON CONFLICT (node_schema_id, user_node_schema_id)
       DO UPDATE
         SET permission = excluded.permission, modified = CURRENT_TIMESTAMP, modified_by = excluded.modified_by`;
-    return this.nodeSchemaRepository.query(sql, params);
+    await this.nodeSchemaRepository.query(sql, params);
+    return this.getPermissions();
   }
 
   public mapToNodeSchemaDto(
