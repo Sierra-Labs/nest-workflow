@@ -12,6 +12,9 @@ import { plainToClass } from 'class-transformer';
 import { Attribute, ReferenceType } from '../entities/attribute.entity';
 import { User } from '../entities/user.entity';
 import { AttributeType } from './attributes';
+import { NodeSchemaPermission } from '../entities/node-schema-permission.entity';
+import { NodeSchemaPermissionDto } from './node-schema-permission.dto';
+import { UserNodeSchemaPermissionDto } from './user-node-schema-permission.dto';
 
 @Injectable()
 export class NodeSchemaService {
@@ -22,6 +25,10 @@ export class NodeSchemaService {
     @InjectRepository(NodeSchemaVersion)
     protected readonly nodeSchemaVersionRepository: Repository<
       NodeSchemaVersion
+    >,
+    @InjectRepository(NodeSchemaPermission)
+    protected readonly nodeSchemaPermissionRepository: Repository<
+      NodeSchemaPermission
     >,
     protected readonly configService: ConfigService,
   ) {}
@@ -234,6 +241,96 @@ export class NodeSchemaService {
       return;
     }
     return this.mapToNodeSchemaDto(nodeSchemaVersion);
+  }
+
+  public async getPermissions(): Promise<NodeSchemaPermissionDto[]> {
+    const results = await this.nodeSchemaPermissionRepository
+      .createQueryBuilder('nodeSchemaPermissions')
+      .select([
+        'nodeSchema.id as "nodeSchemaId"',
+        'nodeSchemaVersion.name as "nodeSchemaName"',
+        'nodeSchemaVersion.label as "nodeSchemaLabel"',
+        'userNodeSchema.id as "userNodeSchemaId"',
+        'userNodeSchemaVersion.name as "userNodeSchemaName"',
+        'userNodeSchemaVersion.label as "userNodeSchemaLabel"',
+        'nodeSchemaPermissions.permission as "permission"',
+        'nodeSchemaPermissions.deleted as "deleted"',
+      ])
+      .innerJoin('nodeSchemaPermissions.nodeSchema', 'nodeSchema')
+      .innerJoin('nodeSchema.versions', 'nodeSchemaVersion')
+      .innerJoin('nodeSchemaPermissions.userNodeSchema', 'userNodeSchema')
+      .innerJoin('userNodeSchema.versions', 'userNodeSchemaVersion')
+      .orderBy('nodeSchema.id')
+      .getRawMany();
+
+    const nodeSchemaPermissions = [];
+    let nodeSchemaPermissionDto: NodeSchemaPermissionDto;
+    for (const row of results) {
+      if (
+        !nodeSchemaPermissionDto ||
+        nodeSchemaPermissionDto.nodeSchemaId !== row.nodeSchemaId
+      ) {
+        nodeSchemaPermissionDto = {
+          nodeSchemaId: row.nodeSchemaId,
+          name: row.nodeSchemaName,
+          label: row.nodeSchemaLabel,
+          userNodeSchemaPermissions: [],
+        };
+        nodeSchemaPermissions.push(nodeSchemaPermissionDto);
+      }
+      const userNodeSchemaPermissionDto: UserNodeSchemaPermissionDto = {
+        userNodeSchemaId: row.userNodeSchemaId,
+        name: row.userNodeSchemaName,
+        label: row.userNodeSchemaLabel,
+        permission: row.permission,
+        deleted: row.deleted,
+      };
+      nodeSchemaPermissionDto.userNodeSchemaPermissions.push(
+        userNodeSchemaPermissionDto,
+      );
+    }
+    return nodeSchemaPermissions;
+  }
+
+  public async upsertPermissions(
+    nodeSchemaPermissions: NodeSchemaPermissionDto[],
+    user: User,
+  ): Promise<NodeSchemaPermissionDto[]> {
+    const sqlParams = [];
+    const params = [];
+    let paramCount = 1;
+    // nested for loop into the nodeSchemaPermissionDto[] per nodeSchemaId,
+    // access userNodeSchemaPermissions, creating params to use in sql insert statement.
+    for (const nodeSchemaPermission of nodeSchemaPermissions) {
+      for (const userNodeSchemaPermission of nodeSchemaPermission.userNodeSchemaPermissions) {
+        const rowParams = [
+          nodeSchemaPermission.nodeSchemaId,
+          userNodeSchemaPermission.userNodeSchemaId,
+          userNodeSchemaPermission.permission,
+          userNodeSchemaPermission.deleted,
+          new Date(),
+          user.id,
+          new Date(),
+          user.id,
+        ];
+        const rowSqlParams = [];
+        // taking the row params and mapping them into Sql params [ "$1", "$2", "$3", .... ] joining them on ,
+        rowParams.map(() => {
+          rowSqlParams.push(`$${paramCount}`);
+          paramCount++;
+        });
+        sqlParams.push(rowSqlParams.join(','));
+        params.push(...rowParams);
+      }
+    }
+    // insert statement that joins the sql params after each set of row params closing the rowParams1),(rowParams2,
+    const sql = `INSERT INTO node_schema_permission (
+        node_schema_id, user_node_schema_id, permission, deleted, modified, modified_by, created, created_by)
+    VALUES (${sqlParams.join('),(')})
+    ON CONFLICT (node_schema_id, user_node_schema_id)
+      DO UPDATE
+        SET permission = excluded.permission, modified = CURRENT_TIMESTAMP, modified_by = excluded.modified_by`;
+    return this.nodeSchemaRepository.query(sql, params);
   }
 
   public mapToNodeSchemaDto(

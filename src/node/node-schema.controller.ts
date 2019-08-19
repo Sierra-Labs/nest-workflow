@@ -28,6 +28,9 @@ import { WorkflowService } from '../workflow/workflow.service';
 import { FindNodeSchemaDto, NodeSchemaDto } from './node-schema.dto';
 import { NodeSchemaService } from './node-schema.service';
 import { NodeFindOptions, NodeService } from './node.service';
+import { NodeSchemaPermissionDto } from './node-schema-permission.dto';
+import { labeledStatement } from 'babel-types';
+import { UserNodeSchemaPermissionDto } from './user-node-schema-permission.dto';
 
 @ApiUseTags('Node Schemas')
 @Controller('node-schemas')
@@ -150,7 +153,9 @@ export class NodeSchemaController {
 
   @Roles(RolesType.$authenticated)
   @ApiOperation({ title: 'Get node schema and its latest schema version' })
-  @Get(':nodeSchemaId')
+  @Get(
+    ':nodeSchemaId([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})',
+  )
   findById(
     @Req() request,
     @Param('nodeSchemaId', new RequiredPipe()) nodeSchemaId: string,
@@ -190,6 +195,30 @@ export class NodeSchemaController {
     return this.nodeSchemaService.findByName(
       activeOrganization.id,
       nodeSchemaName,
+    );
+  }
+
+  @Roles('Admin')
+  @ApiOperation({ title: 'Get node schema permissions' })
+  @Get('permissions')
+  getPermissions(@Req() request): Promise<NodeSchemaPermissionDto[]> {
+    const activeOrganization = request.user.activeOrganization;
+    if (!activeOrganization) {
+      throw new BadRequestException('no active organization specified.');
+    }
+    return this.nodeSchemaService.getPermissions();
+  }
+
+  @Roles('Admin')
+  @ApiOperation({ title: 'Upsert Node Schema Permissions' })
+  @Post('permissions')
+  public async upsertPermissions(
+    @Body() nodeSchemaPermissions: NodeSchemaPermissionDto[],
+    @Req() request,
+  ): Promise<any> {
+    return this.nodeSchemaService.upsertPermissions(
+      nodeSchemaPermissions,
+      request.user,
     );
   }
 
