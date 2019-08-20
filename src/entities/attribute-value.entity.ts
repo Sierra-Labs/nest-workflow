@@ -95,6 +95,14 @@ export class AttributeValue {
   timeValue: string;
 
   @ApiModelPropertyOptional()
+  @Column('point', {
+    nullable: true,
+    comment:
+      'Depending on `attribute.type` the attribute value maybe stored as a point value.',
+  })
+  public pointValue: any;
+
+  @ApiModelPropertyOptional()
   @Column('jsonb', {
     nullable: true,
     comment:

@@ -9,4 +9,5 @@ export enum AttributeType {
   Sequence = 'sequence',
   Signature = 'signature',
   Boolean = 'boolean',
+  GeoPoint = 'geopoint',
 }

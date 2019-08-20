@@ -712,6 +712,8 @@ export class NodeDataService {
         return 'numberValue';
       case AttributeType.Boolean:
         return 'booleanValue';
+      case AttributeType.GeoPoint:
+        return 'pointValue';
       case AttributeType.Reference:
         return 'referenceNodeId';
       case AttributeType.Enumeration:
@@ -860,7 +862,10 @@ export class NodeDataService {
     let hasRunWorkflow = false;
     if (workflows && workflows.length > 0) {
       for (const workflow of workflows) {
-        if (workflow.triggers.includes(WorkflowTrigger.Update)) {
+        const trigger = upsertNodeDataDto.nodeId
+          ? WorkflowTrigger.Update
+          : WorkflowTrigger.Create;
+        if (workflow.triggers.includes(trigger)) {
           const workflowMachine = new WorkflowMachine();
           workflow.config.context = {
             nodeDataService: this,
@@ -1123,6 +1128,11 @@ export class NodeDataService {
               // validate url string; otherwise ignore
               if (validator.isURL(value)) {
                 attributeValueDto.textValue = value;
+              }
+            } else if (attribute.type === AttributeType.GeoPoint) {
+              const coordinatesPattern = /^\((.*),(.*)\)$/;
+              if (value && value.match(coordinatesPattern)) {
+                attributeValueDto[fieldName] = value;
               }
             } else {
               if (value instanceof Array && fieldName === 'textValue') {
