@@ -315,6 +315,11 @@ export class NodeDataService {
     query.where('"nodeSchema".organization_id = :organizationId', {
       organizationId,
     });
+    if (options && options.userId) {
+      query.andWhere('"node"."reference_user_id" = :userId', {
+        userId: options.userId,
+      });
+    }
     if (options.nodeId) {
       query.andWhere('"node"."id" = :nodeId', { nodeId: options.nodeId });
     } else {
@@ -947,6 +952,9 @@ export class NodeDataService {
     } else {
       upsertNode.nodeSchemaVersionId = upsertNodeDataDto.nodeSchemaVersionId;
       upsertNode.createdBy = user;
+    }
+    if (nodeSchemaDto.type === 'user' && upsertNodeDataDto.referenceUserId) {
+      upsertNode.referenceUserId = upsertNodeDataDto.referenceUserId;
     }
     const node = await transactionalEntityManager.save(upsertNode);
     upsertNodeDataDto.nodeId = node.id;

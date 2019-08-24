@@ -20,6 +20,13 @@ export interface NodeAttributeWhereClause {
   [attributeName: string]: string | string[];
 }
 
+// export interface NodeMetadata {
+//   [attributeName: string]: {
+//     modified: Date,
+//     created: Date,
+//   }
+// }
+
 /**
  * Sort order for find call
  * { firstName: 'ASC', id: 'DESC' }
@@ -30,8 +37,10 @@ export interface NodeAttributeOrderClause {
 
 export interface NodeFindOptions {
   nodeId?: string;
+  userId?: number;
   search?: string; // search all attributes
   relations?: string[]; // TODO: join based on relationship fields
+  metadata?: string[];
   includeReferences?: boolean;
   includeBackReferences?: boolean;
   page?: number;
