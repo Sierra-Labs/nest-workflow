@@ -1,6 +1,6 @@
 {
   "name": "@sierralabs/nest-workflow",
-  "version": "0.1.36",
+  "version": "0.1.37",
   "description": "",
   "author": "Sierra Labs",
   "license": "Sierra Labs",
@@ -36,7 +36,7 @@
     "@nestjs/core": "^5.4.0",
     "@nestjs/swagger": "^2.5.1",
     "@nestjs/typeorm": "^5.3.0",
-    "@sierralabs/nest-identity": "^0.2.9",
+    "@sierralabs/nest-identity": "^0.2.10",
     "@sierralabs/nest-utils": "0.0.16",
     "aws-sdk": "^2.413.0",
     "class-transformer": "^0.2.0",

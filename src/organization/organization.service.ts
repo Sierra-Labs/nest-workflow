@@ -279,12 +279,16 @@ export class OrganizationService {
     const options = {
       to: organizationInvite.email,
       from: config.from,
-      subject: 'Invite to join Sierra Policies',
+      subject:
+        config.invite && config.invite.subject
+          ? config.invite.subject
+          : 'Invite',
       template: 'organization-invite',
       context: {
         adminUser: user,
         organization: organizationInvite.organization,
-        baseUrl: config.clientBaseUrl,
+        baseUrl: config.clientBaseUrl, // deprecated
+        url: config.clientBaseUrl,
         inviteUrl: this.generateTokenUrl(
           organizationInvite.email,
           config.clientBaseUrl,
