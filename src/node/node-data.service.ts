@@ -901,6 +901,7 @@ export class NodeDataService {
       upsertNodeDataDto = this.upsertWithoutWorkflow(
         transactionalEntityManager,
         nodeSchemaDto,
+        nodeDataDto,
         upsertNodeDataDto,
         user,
       );
@@ -942,17 +943,23 @@ export class NodeDataService {
   public async upsertWithoutWorkflow(
     transactionalEntityManager: EntityManager,
     nodeSchemaDto: NodeSchemaDto,
+    nodeDataDto: NodeDataDto,
     upsertNodeDataDto: NodeDataDto,
     user: User,
   ): Promise<NodeDataDto> {
     const upsertNode = new Node();
+    upsertNode.nodeSchemaVersionId = upsertNodeDataDto.nodeSchemaVersionId;
     upsertNode.modifiedBy = user;
     if (upsertNodeDataDto.nodeId) {
       upsertNode.id = upsertNodeDataDto.nodeId;
+      if (!nodeDataDto) {
+        // node is being imported
+        upsertNode.createdBy = user;
+      }
     } else {
-      upsertNode.nodeSchemaVersionId = upsertNodeDataDto.nodeSchemaVersionId;
       upsertNode.createdBy = user;
     }
+
     if (nodeSchemaDto.type === 'user' && upsertNodeDataDto.referenceUserId) {
       upsertNode.referenceUserId = upsertNodeDataDto.referenceUserId;
     }
@@ -1052,6 +1059,7 @@ export class NodeDataService {
       await this.upsertWithoutWorkflow(
         transactionalEntityManager,
         nodeSchemaDto,
+        sourceNodeDataDto,
         sourceNodeDataDto,
         user,
       );

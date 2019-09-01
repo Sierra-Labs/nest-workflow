@@ -13,6 +13,7 @@ export const workflowServices = {
     return await context.nodeDataService.upsertWithoutWorkflow(
       context.transactionalEntityManager,
       context.nodeSchemaDto,
+      context.nodeDataDto,
       context.upsertNodeDataDto,
       context.user,
     );
