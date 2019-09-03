@@ -39,7 +39,7 @@ export interface NodeFindOptions {
   nodeId?: string;
   userId?: number;
   search?: string; // search all attributes
-  relations?: string[]; // TODO: join based on relationship fields
+  relations?: string[];
   metadata?: string[];
   includeReferences?: boolean;
   includeBackReferences?: boolean;

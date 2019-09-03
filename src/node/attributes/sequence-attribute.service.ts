@@ -73,7 +73,7 @@ export class SequenceAttributeService extends AttributeService {
     attributeValue.attributeId = attribute.id;
     attributeValue.nodeId = attributeValueDto.nodeId;
     attributeValue.numberValue = result.lastSequenceValue;
-    attributeValue.textValue = `${attribute.options.prefix}${
+    attributeValue.textValue = `${attribute.options.prefix || ''}${
       result.lastSequenceValue
     }`;
     attributeValue.createdBy = user;

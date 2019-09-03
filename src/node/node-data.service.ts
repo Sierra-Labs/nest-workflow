@@ -101,6 +101,15 @@ export class NodeDataService {
     const nodes = results[0];
     const totalCount = results[1];
 
+    // TODO: Implement relations back reference filter
+    // const hasRelationsQuery = false;
+    // const hasBackReferenceRelationQuery = false;
+    // if (options.relations) {
+    //   for (const relation of options.relations) {
+    //     const relationPath = relation.split('.'); // supports dot notation
+    //   }
+    // }
+
     // next get the the reference attribute node values
     // (doing this in a second query so that results returned are not compounded)
     let nodeReferences = [];
@@ -1142,7 +1151,7 @@ export class NodeDataService {
               }
             } else if (attribute.type === AttributeType.Signature) {
               // validate url string; otherwise ignore
-              if (validator.isURL(value)) {
+              if (validator.isURL(value, { require_tld: false })) {
                 attributeValueDto.textValue = value;
               }
             } else if (attribute.type === AttributeType.GeoPoint) {
