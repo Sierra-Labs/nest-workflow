@@ -49,6 +49,13 @@ export class AttributeValueLog {
   numberValue: number;
 
   @ApiModelPropertyOptional()
+  @Column('boolean', {
+    nullable: true,
+    comment: 'A snapshot of the boolean value at the time of the log entry.',
+  })
+  booleanValue: boolean;
+
+  @ApiModelPropertyOptional()
   @Column('timestamp', {
     nullable: true,
     comment: 'A snapshot of the date/time value at the time of the log entry.',
@@ -68,6 +75,13 @@ export class AttributeValueLog {
     comment: 'A snapshot of the time value at the time of the log entry.',
   })
   timeValue: string;
+
+  @ApiModelPropertyOptional()
+  @Column('point', {
+    nullable: true,
+    comment: 'A snapshot of the point value at the time of the log entry.',
+  })
+  public pointValue: any;
 
   @ApiModelPropertyOptional()
   @Column('jsonb', {

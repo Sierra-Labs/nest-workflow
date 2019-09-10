@@ -96,9 +96,11 @@ export class AttributeService {
     attributeValueLog.attributeValueId = attributeValue.id;
     attributeValueLog.textValue = attributeValue.textValue;
     attributeValueLog.numberValue = attributeValue.numberValue;
+    attributeValueLog.booleanValue = attributeValue.booleanValue;
     attributeValueLog.dateTimeValue = attributeValue.dateTimeValue;
     attributeValueLog.dateValue = attributeValue.dateValue;
     attributeValueLog.timeValue = attributeValue.timeValue;
+    attributeValueLog.pointValue = attributeValue.pointValue;
     attributeValueLog.jsonValue = attributeValue.jsonValue;
     attributeValueLog.referenceNodeId = attributeValue.referenceNodeId;
     attributeValueLog.createdBy = attributeValue.modifiedBy;
