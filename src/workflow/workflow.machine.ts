@@ -43,6 +43,10 @@ export class WorkflowMachine {
     Object.assign(workflowActions, actions);
   }
 
+  static setWorkflowServices(services) {
+    Object.assign(workflowServices, services);
+  }
+
   createMachine(
     machineConfig: MachineConfig<WorkflowContext, any, any>,
   ): StateMachine<WorkflowContext, any, any> {
@@ -64,7 +68,7 @@ export class WorkflowMachine {
       //   console.log('onEvent', results);
       // });
       service.onTransition(results => {
-        console.log('onTransition', results.value);
+        console.log('onTransition', results.value, results.event);
         // service.stop();
         // resolve(results);
       });
