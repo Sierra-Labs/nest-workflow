@@ -1093,13 +1093,14 @@ export class NodeDataService {
     for (const attribute of nodeSchemaDto.attributes) {
       switch (attribute.type) {
         case 'sequence':
-          await this.sequenceAttributeService.upsertAttributeValue(
+          const attributeValue = await this.sequenceAttributeService.upsertAttributeValue(
             transactionalEntityManager,
             nodeSchemaDto,
             // sequence generates attribute values so pass in the attribute id only
             { nodeId: nodeDataDto.nodeId, attributeId: attribute.id },
             user,
           );
+          nodeDataDto[attribute.name] = attributeValue.textValue;
           break;
         default:
           // some attributes can have one or more attribute values (so filter)
