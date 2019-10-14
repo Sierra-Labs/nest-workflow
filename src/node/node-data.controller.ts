@@ -60,8 +60,12 @@ export class NodeDataController {
     const maxSize = this.configService.get('pagination.maxPageSize') || 200;
     const defaultSize =
       this.configService.get('pagination.defaultPageSize') || 100;
-    options.limit = Math.min(maxSize, limit || defaultSize);
-    options.page = page || 0;
+
+    const setLimit = options.limit ? options.limit : limit;
+    options.limit = Math.min(maxSize, setLimit || defaultSize);
+
+    options.page = options.page ? options.page : page || 0;
+
     return this.nodeDataService.find(
       activeOrganization.id,
       nodeSchemaName,
