@@ -52,7 +52,7 @@ export class NodeDataService {
     protected readonly configService: ConfigService,
     protected readonly attributeService: AttributeService,
     protected readonly sequenceAttributeService: SequenceAttributeService,
-  ) {}
+  ) { }
 
   public async find(
     organizationId: number,
@@ -217,7 +217,7 @@ export class NodeDataService {
                   `referenceNodeAttributeValue${index - 1}.referenceNode`,
                   `referenceNode${index}`,
                   `"referenceNode${index}".is_deleted = false AND "referenceNodeAttribute${index -
-                    1}"."name" IN (:...attributeNames${index})`,
+                  1}"."name" IN (:...attributeNames${index})`,
                   {
                     [`attributeNames${index}`]: subReferenceAttributeNames[
                       index
@@ -1051,7 +1051,7 @@ export class NodeDataService {
       if (sourceNodeDataDto[referenceAttributeName]) {
         throw new BadRequestException(
           `A reference node already exists. Adding a reference node would violate the ${
-            attribute.options.referenceType
+          attribute.options.referenceType
           } constraint for ${referenceAttributeName}.`,
         );
       }
@@ -1116,16 +1116,16 @@ export class NodeDataService {
           const fieldName = this.getAttributeValueFieldNameByType(attribute);
           if (
             (value === undefined || value === null) &&
-            filteredAttributeValues.length > 0
-          ) {
-            continue; // no data for attribute
-          } else if (
-            (value === undefined || value === null) &&
             filteredAttributeValues.length === 0 &&
             attribute.options.default
           ) {
             // Default attribute value available so use it
             attributeValueDto[fieldName] = attribute.options.default;
+          } else if (
+            value === undefined &&
+            filteredAttributeValues.length === 0
+          ) {
+            continue; // no data for attribute
           } else if (value !== undefined) {
             if (filteredAttributeValues.length > 0) {
               attributeValueDto.id = filteredAttributeValues[0].id;
