@@ -61,8 +61,8 @@ export class NodeDataController {
     const defaultSize =
       this.configService.get('pagination.defaultPageSize') || 100;
 
-    const setLimit = options.limit ? options.limit : limit;
-    options.limit = Math.min(maxSize, setLimit || defaultSize);
+    limit = options.limit ? options.limit : limit;
+    options.limit = Math.min(maxSize, limit || defaultSize);
 
     options.page = options.page ? options.page : page || 0;
 
