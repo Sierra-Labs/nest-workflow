@@ -52,7 +52,7 @@ export class NodeDataService {
     protected readonly configService: ConfigService,
     protected readonly attributeService: AttributeService,
     protected readonly sequenceAttributeService: SequenceAttributeService,
-  ) { }
+  ) {}
 
   public async find(
     organizationId: number,
@@ -217,7 +217,7 @@ export class NodeDataService {
                   `referenceNodeAttributeValue${index - 1}.referenceNode`,
                   `referenceNode${index}`,
                   `"referenceNode${index}".is_deleted = false AND "referenceNodeAttribute${index -
-                  1}"."name" IN (:...attributeNames${index})`,
+                    1}"."name" IN (:...attributeNames${index})`,
                   {
                     [`attributeNames${index}`]: subReferenceAttributeNames[
                       index
@@ -348,7 +348,14 @@ export class NodeDataService {
           if (options.order) {
             this.addOrderFilter(query, nodeSchemaDto, options);
           }
-          if (options.where || options.search) {
+          if (options.search) {
+            try {
+              this.addAttributeSearch(query, subQuery, options);
+            } catch (error) {
+              throw error;
+            }
+          }
+          if (options.where) {
             if (options.where instanceof Array) {
               // TODO: implement OR logic
               // subQuery.andWhere(new Brackets(bracketQuery => {
@@ -378,6 +385,29 @@ export class NodeDataService {
     });
   }
 
+  protected async addAttributeSearch(
+    mainQuery: SelectQueryBuilder<any>,
+    subQuery: SelectQueryBuilder<any>,
+    options: NodeFindOptions,
+  ) {
+    subQuery.innerJoin(
+      'node.attributeValues',
+      'attributeValueSearch',
+      '"attributeValueSearch".is_deleted = false',
+    );
+    // .innerJoin('attributeValueSearch.attribute', 'attributeSearch');
+    const validator = new Validator();
+    if (validator.isUUID(options.search)) {
+      // autocomplete view uses this when setting default / pre-populated form fields
+      subQuery.andWhere('"node"."id" = :nodeId', { nodeId: options.search });
+    } else {
+      // TODO: handle number_value, date_value, etc.
+      subQuery.andWhere('"attributeValueSearch"."text_value" ILIKE :search', {
+        search: `%${options.search}%`,
+      });
+    }
+  }
+
   protected async addAttributeWhere(
     mainQuery: SelectQueryBuilder<any>,
     subQuery: SelectQueryBuilder<any>,
@@ -390,151 +420,137 @@ export class NodeDataService {
         '"attributeValue".is_deleted = false',
       )
       .innerJoin('attributeValue.attribute', 'attribute');
-    if (options.search) {
-      const validator = new Validator();
-      if (validator.isUUID(options.search)) {
-        // autocomplete view uses this when setting default / pre-populated form fields
-        subQuery.andWhere('"node"."id" = :nodeId', { nodeId: options.search });
-      } else {
-        // TODO: handle number_value, date_value, etc.
-        subQuery.andWhere('"attributeValue"."text_value" ILIKE :search', {
-          search: `%${options.search}%`,
+    const whereClause = options.where as NodeAttributeWhereClause;
+    const keys = Object.keys(whereClause);
+    keys.forEach((key, index) => {
+      if (key === 'referenceNodeId') {
+        // filter to get forward reference relationships
+        subQuery.andWhere('"attributeValue"."reference_node_id" = :value', {
+          value: whereClause.referenceNodeId,
         });
-      }
-    }
-    if (options.where) {
-      const whereClause = options.where as NodeAttributeWhereClause;
-      const keys = Object.keys(whereClause);
-      keys.forEach((key, index) => {
-        if (key === 'referenceNodeId') {
-          // filter to get forward reference relationships
-          subQuery.andWhere('"attributeValue"."reference_node_id" = :value', {
-            value: whereClause.referenceNodeId,
-          });
-        } else if (key === 'backReferenceNodeId') {
-          // filter to get back reference relationships
-          subQuery
-            .innerJoin(
-              'nodeSchemaVersion.attributeBackReferences',
-              'attributeBackReferences',
-              '"attributeBackReferences".is_deleted = false',
-            )
-            .innerJoin(
-              'attributeBackReferences.nodeSchemaVersion',
-              'attributeBackReferenceNodeSchemaVersion',
-            )
-            .innerJoin(
-              'attributeBackReferenceNodeSchemaVersion.nodes',
-              'backReferenceNode',
-              `"backReferenceNode".is_deleted = false AND "backReferenceNode"."id" = :nodeId AND
+      } else if (key === 'backReferenceNodeId') {
+        // filter to get back reference relationships
+        subQuery
+          .innerJoin(
+            'nodeSchemaVersion.attributeBackReferences',
+            'attributeBackReferences',
+            '"attributeBackReferences".is_deleted = false',
+          )
+          .innerJoin(
+            'attributeBackReferences.nodeSchemaVersion',
+            'attributeBackReferenceNodeSchemaVersion',
+          )
+          .innerJoin(
+            'attributeBackReferenceNodeSchemaVersion.nodes',
+            'backReferenceNode',
+            `"backReferenceNode".is_deleted = false AND "backReferenceNode"."id" = :nodeId AND
           EXISTS (SELECT 1 FROM "attribute_value" WHERE reference_node_id = "node"."id" AND node_id = "backReferenceNode"."id")`,
-              { nodeId: whereClause.backReferenceNodeId },
-            );
-        } else if (key === 'nodeSchemaVersionId') {
-          // skip nodeSchemaVersionId
-        } else {
-          // attribute reference search
-          // each where param must have a unique key in query builder
-          let shouldIgnoreKey = false;
-          const whereParams = {} as any;
-          const whereNameKey = `attribute${index}`;
-          const whereValueKey = `value${index}`;
-          whereParams[whereNameKey] = key;
-          whereParams[whereValueKey] = whereClause[key];
+            { nodeId: whereClause.backReferenceNodeId },
+          );
+      } else if (key === 'nodeSchemaVersionId') {
+        // skip nodeSchemaVersionId
+      } else {
+        // attribute reference search
+        // each where param must have a unique key in query builder
+        let shouldIgnoreKey = false;
+        const whereParams = {} as any;
+        const whereNameKey = `attribute${index}`;
+        const whereValueKey = `value${index}`;
+        whereParams[whereNameKey] = key;
+        whereParams[whereValueKey] = whereClause[key];
 
-          let attributeValueField: string;
-          const validator = new Validator();
-          const whereValue = whereClause[key];
-          if (whereValue instanceof Array && whereValue.length > 0) {
-            mainQuery.andWhere(
-              `${whereNameKey} IN (:...${whereValueKey})`,
-              whereParams,
-            );
-            if (validator.isUUID(whereValue[0])) {
-              // use first item in array to test if UUID
-              attributeValueField = 'reference_node_id';
-            } else {
-              attributeValueField = 'text_value';
-            }
-          } else if (validator.isUUID(whereValue as string)) {
+        let attributeValueField: string;
+        const validator = new Validator();
+        const whereValue = whereClause[key];
+        if (whereValue instanceof Array && whereValue.length > 0) {
+          mainQuery.andWhere(
+            `${whereNameKey} IN (:...${whereValueKey})`,
+            whereParams,
+          );
+          if (validator.isUUID(whereValue[0])) {
+            // use first item in array to test if UUID
             attributeValueField = 'reference_node_id';
-            mainQuery.andWhere(
-              `${whereNameKey} = :${whereValueKey}`,
-              whereParams,
-            );
-          } else if (typeof whereValue === 'number') {
-            attributeValueField = 'number_value';
-            // TODO: handle >, >=, <, <= and range
-            mainQuery.andWhere(
-              `${whereNameKey} = :${whereValueKey}`,
-              whereParams,
-            );
-          } else if (typeof whereValue === 'string') {
+          } else {
             attributeValueField = 'text_value';
-            whereParams[whereValueKey] = `%${whereClause[key]}%`;
+          }
+        } else if (validator.isUUID(whereValue as string)) {
+          attributeValueField = 'reference_node_id';
+          mainQuery.andWhere(
+            `${whereNameKey} = :${whereValueKey}`,
+            whereParams,
+          );
+        } else if (typeof whereValue === 'number') {
+          attributeValueField = 'number_value';
+          // TODO: handle >, >=, <, <= and range
+          mainQuery.andWhere(
+            `${whereNameKey} = :${whereValueKey}`,
+            whereParams,
+          );
+        } else if (typeof whereValue === 'string') {
+          attributeValueField = 'text_value';
+          whereParams[whereValueKey] = `%${whereClause[key]}%`;
+          mainQuery.andWhere(
+            `${whereNameKey} ILIKE :${whereValueKey}`,
+            whereParams,
+          );
+        } else if (
+          whereValue &&
+          (whereValue as any).start &&
+          (whereValue as any).end
+        ) {
+          // search range
+          const start = (whereValue as any).start;
+          const end = (whereValue as any).end;
+          if (
+            (validator.isNumber(start) || validator.isNumberString(start)) &&
+            (validator.isNumber(end) || validator.isNumberString(end))
+          ) {
+            attributeValueField = 'number_value';
             mainQuery.andWhere(
-              `${whereNameKey} ILIKE :${whereValueKey}`,
-              whereParams,
+              // since we are validating number values string concat below is not at risk to sql injection
+              `${whereNameKey} >= ${start} AND ${whereNameKey} <= ${end}`,
+              whereParams, // whereParams needed for main select query `case when` statement
             );
           } else if (
-            whereValue &&
-            (whereValue as any).start &&
-            (whereValue as any).end
+            validator.isDateString(start) &&
+            validator.isDateString(end)
           ) {
-            // search range
-            const start = (whereValue as any).start;
-            const end = (whereValue as any).end;
-            if (
-              (validator.isNumber(start) || validator.isNumberString(start)) &&
-              (validator.isNumber(end) || validator.isNumberString(end))
-            ) {
-              attributeValueField = 'number_value';
-              mainQuery.andWhere(
-                // since we are validating number values string concat below is not at risk to sql injection
-                `${whereNameKey} >= ${start} AND ${whereNameKey} <= ${end}`,
-                whereParams, // whereParams needed for main select query `case when` statement
-              );
-            } else if (
-              validator.isDateString(start) &&
-              validator.isDateString(end)
-            ) {
-              attributeValueField = 'date_time_value';
-              mainQuery.andWhere(
-                // since we are validating date values string concat below is not at risk to sql injection
-                `${whereNameKey} >= '${start}' AND ${whereNameKey} <= '${end}'`,
-                whereParams, // whereParams needed for main select query `case when` statement
-              );
-            } else {
-              // not number or date values for start/end parameters
-              shouldIgnoreKey = true;
-            }
-          } else if (
-            whereValue &&
-            (whereValue as any).nodeId &&
-            validator.isUUID((whereValue as any).nodeId as string)
-          ) {
-            // Reference Node search; provided filter is an object (i.e. from the autocomplete field)
-            attributeValueField = 'reference_node_id';
-            whereParams[whereValueKey] = (whereValue as any).nodeId;
+            attributeValueField = 'date_time_value';
             mainQuery.andWhere(
-              `${whereNameKey} = :${whereValueKey}`,
-              whereParams,
+              // since we are validating date values string concat below is not at risk to sql injection
+              `${whereNameKey} >= '${start}' AND ${whereNameKey} <= '${end}'`,
+              whereParams, // whereParams needed for main select query `case when` statement
             );
           } else {
-            // could not identify filter inputs
+            // not number or date values for start/end parameters
             shouldIgnoreKey = true;
           }
-          if (!shouldIgnoreKey) {
-            const sqlCast =
-              attributeValueField === 'reference_node_id' ? '::text' : ''; // cast uuid property to string
-            subQuery.addSelect(
-              `MAX(CASE WHEN "attribute"."name" = :${whereNameKey}
-               THEN "attributeValue"."${attributeValueField}"${sqlCast} END) as "${whereNameKey}"`,
-            );
-          }
+        } else if (
+          whereValue &&
+          (whereValue as any).nodeId &&
+          validator.isUUID((whereValue as any).nodeId as string)
+        ) {
+          // Reference Node search; provided filter is an object (i.e. from the autocomplete field)
+          attributeValueField = 'reference_node_id';
+          whereParams[whereValueKey] = (whereValue as any).nodeId;
+          mainQuery.andWhere(
+            `${whereNameKey} = :${whereValueKey}`,
+            whereParams,
+          );
+        } else {
+          // could not identify filter inputs
+          shouldIgnoreKey = true;
         }
-      });
-    }
+        if (!shouldIgnoreKey) {
+          const sqlCast =
+            attributeValueField === 'reference_node_id' ? '::text' : ''; // cast uuid property to string
+          subQuery.addSelect(
+            `MAX(CASE WHEN "attribute"."name" = :${whereNameKey}
+               THEN "attributeValue"."${attributeValueField}"${sqlCast} END) as "${whereNameKey}"`,
+          );
+        }
+      }
+    });
   }
 
   protected async addOrderFilter(
@@ -1051,7 +1067,7 @@ export class NodeDataService {
       if (sourceNodeDataDto[referenceAttributeName]) {
         throw new BadRequestException(
           `A reference node already exists. Adding a reference node would violate the ${
-          attribute.options.referenceType
+            attribute.options.referenceType
           } constraint for ${referenceAttributeName}.`,
         );
       }
