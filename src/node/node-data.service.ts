@@ -80,7 +80,7 @@ export class NodeDataService {
       .createQueryBuilder('node')
       .take(limit)
       .skip(offset)
-      .select(['node.id', 'node.nodeSchemaVersionId'])
+      .select(['node.id', 'node.nodeSchemaVersionId', 'node.created'])
       .innerJoin('node.nodeSchemaVersion', 'nodeSchemaVersion')
       .innerJoin('nodeSchemaVersion.nodeSchema', 'nodeSchema')
       // get node attributes
@@ -161,7 +161,7 @@ export class NodeDataService {
       .createQueryBuilder('node')
       .take(limit)
       .skip(offset)
-      .select(['node.id', 'node.nodeSchemaVersionId'])
+      .select(['node.id', 'node.nodeSchemaVersionId', 'node.created'])
       .innerJoin('node.nodeSchemaVersion', 'nodeSchemaVersion')
       .innerJoin('nodeSchemaVersion.nodeSchema', 'nodeSchema')
       .leftJoinAndSelect(
@@ -273,7 +273,7 @@ export class NodeDataService {
       .createQueryBuilder('node')
       .take(limit)
       .skip(offset)
-      .select(['node.id', 'node.nodeSchemaVersionId'])
+      .select(['node.id', 'node.nodeSchemaVersionId', 'node.created'])
       // Get the node schema
       .innerJoinAndSelect('node.nodeSchemaVersion', 'nodeSchemaVersion')
       .innerJoin('nodeSchemaVersion.nodeSchema', 'nodeSchema')
@@ -336,7 +336,7 @@ export class NodeDataService {
         subQuery => {
           subQuery
             .from(Node, 'node')
-            .select('"node"."id"')
+            .select(['"node"."id"', 'node.created'])
             .innerJoin('node.nodeSchemaVersion', 'nodeSchemaVersion')
             .innerJoin('nodeSchemaVersion.nodeSchema', 'nodeSchema')
             .where(
@@ -347,6 +347,8 @@ export class NodeDataService {
             );
           if (options.order) {
             this.addOrderFilter(query, nodeSchemaDto, options);
+          } else {
+            query.orderBy('node.created', 'ASC');
           }
           if (options.search) {
             try {
