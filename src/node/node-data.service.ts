@@ -925,7 +925,7 @@ export class NodeDataService {
     }
     if (!hasRunWorkflow) {
       // if no workflow has been run then upsert
-      upsertNodeDataDto = this.upsertWithoutWorkflow(
+      upsertNodeDataDto = await this.upsertWithoutWorkflow(
         transactionalEntityManager,
         nodeSchemaDto,
         nodeDataDto,
