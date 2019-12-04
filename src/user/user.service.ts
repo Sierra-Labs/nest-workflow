@@ -1,6 +1,6 @@
 import { EntityManager, Repository } from 'typeorm';
 
-import { MailerProvider } from '@nest-modules/mailer';
+import { MailerService } from '@nest-modules/mailer';
 import {
   BadRequestException,
   ConflictException,
@@ -27,7 +27,7 @@ export class UserService extends BaseUserService {
     protected readonly configService: ConfigService,
     protected readonly rolesService: RolesService,
     protected readonly moduleRef: ModuleRef,
-    @Inject('MailerProvider') protected readonly mailerProvider: MailerProvider,
+    protected readonly mailerProvider: MailerService,
     @InjectEntityManager() protected readonly entityManager: EntityManager,
     @Inject(forwardRef(() => OrganizationService))
     protected readonly organizationService: OrganizationService,
@@ -51,7 +51,11 @@ export class UserService extends BaseUserService {
     user.verified = false;
     if (userDto.token) {
       const { email } = this.authService.verifyToken(userDto.token);
-      user.verified = email === userDto.email;
+      if (email !== userDto.email) {
+        throw new ConflictException(
+          'Email address must match the invited email address. You can change your email after the registration process.',
+        );
+      }
     }
 
     if (user.password) {
