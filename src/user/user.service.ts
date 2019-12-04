@@ -51,7 +51,9 @@ export class UserService extends BaseUserService {
     user.verified = false;
     if (userDto.token) {
       const { email } = this.authService.verifyToken(userDto.token);
-      if (email !== userDto.email) {
+      if (email === userDto.email) {
+        user.verified = true;
+      } else {
         throw new ConflictException(
           'Email address must match the invited email address. You can change your email after the registration process.',
         );
