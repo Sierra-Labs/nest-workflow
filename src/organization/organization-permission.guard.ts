@@ -1,5 +1,3 @@
-import * as _ from 'lodash';
-
 import {
   CanActivate,
   ExecutionContext,
@@ -77,7 +75,8 @@ export class OrganizationPermissionGuard extends RolesGuard
     if (!user.roles) {
       user.roles = [];
     }
-    if (_.find(user.roles, { name: 'Admin' })) {
+    const isAdmin = user.roles.map(u => u.name.toLowerCase()).includes('admin');
+    if (isAdmin) {
       return true; // Admin users can access all organizations
     }
 
@@ -97,14 +96,11 @@ export class OrganizationPermissionGuard extends RolesGuard
     if (permissions.length === 0) {
       throw new UnprocessableEntityException('No permission specified.');
     }
-    const filteredUserOrganization = _.find(user.userOrganizations, {
-      organization: { id: organizationId } as any,
-    }) as UserOrganization;
-    for (const permission of permissions) {
-      if (filteredUserOrganization.permissions.includes(permission)) {
-        return true;
-      }
-    }
-    return false;
+    const userOrganization = user.userOrganizations.find(
+      uo => uo.organization.id === organizationId,
+    ) as UserOrganization;
+    return userOrganization.permissions.some(perm =>
+      permissions.map(p => p.toLowerCase()).includes(perm.toLowerCase()),
+    );
   }
 }
