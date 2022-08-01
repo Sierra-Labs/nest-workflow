@@ -1,6 +1,6 @@
 # @sierralabs/nest-workflow
 
-Sierra Labs Nest Workflow NPM module powered by NestJS, TypeORM, and Postgres.
+Contains cross-project commonly used NestJS code for workflow management powered by NestJS, TypeORM, and Postgres.
 
 # Requirements
 
@@ -11,7 +11,6 @@ Make sure to have the following installed:
 - `jest` for unit testing
 - `tslint` for TypeScript linting (tslint in VSCode to automate linting)
 - `prettier` for auto formatting in VSCode
-- Make sure you setup an [npmjs.com](http://www.npmjs.com) account and request access to the `@sierralabs` private repos for the NPM dependencies.
 
 ## Installation
 
