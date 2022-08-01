@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
 import { EntityManager, Repository } from 'typeorm';
 
-import { MailerProvider } from '@nest-modules/mailer';
+import { MailerService } from '@nest-modules/mailer';
 import {
   BadRequestException,
   forwardRef,
@@ -45,7 +45,7 @@ export class OrganizationService {
       OrganizationInvite
     >,
     @InjectEntityManager() protected readonly entityManager: EntityManager,
-    @Inject('MailerProvider') protected readonly mailerProvider: MailerProvider,
+    protected readonly mailerProvider: MailerService,
     protected readonly authService: AuthService,
     protected readonly configService: ConfigService,
     @Inject(forwardRef(() => UserService))

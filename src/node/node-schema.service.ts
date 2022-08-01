@@ -386,17 +386,17 @@ export class NodeSchemaService {
   }
 
   public async create(nodeSchemaDto: NodeSchemaDto): Promise<NodeSchemaDto> {
-    if (
-      nodeSchemaDto.versionId &&
-      (await this.findVersionById(
-        nodeSchemaDto.organizationId,
-        nodeSchemaDto.versionId,
-      ))
-    ) {
-      throw new BadRequestException(
-        'Node schema already exists with versionId',
-      );
-    }
+    // if (
+    //   nodeSchemaDto.versionId &&
+    //   (await this.findVersionById(
+    //     nodeSchemaDto.organizationId,
+    //     nodeSchemaDto.versionId,
+    //   ))
+    // ) {
+    //   throw new BadRequestException(
+    //     'Node schema already exists with versionId',
+    //   );
+    // }
     let nodeSchema = new NodeSchema();
     nodeSchema.id = nodeSchemaDto.id;
     nodeSchema.organizationId = nodeSchemaDto.organizationId;

@@ -1,6 +1,6 @@
 import { EntityManager, Repository } from 'typeorm';
 
-import { MailerProvider } from '@nest-modules/mailer';
+import { MailerService } from '@nest-modules/mailer';
 import {
   BadRequestException,
   ConflictException,
@@ -27,7 +27,7 @@ export class UserService extends BaseUserService {
     protected readonly configService: ConfigService,
     protected readonly rolesService: RolesService,
     protected readonly moduleRef: ModuleRef,
-    @Inject('MailerProvider') protected readonly mailerProvider: MailerProvider,
+    protected readonly mailerProvider: MailerService,
     @InjectEntityManager() protected readonly entityManager: EntityManager,
     @Inject(forwardRef(() => OrganizationService))
     protected readonly organizationService: OrganizationService,
