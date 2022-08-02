@@ -1,9 +1,14 @@
 {
   "name": "@sierralabs/nest-workflow",
   "version": "0.3.0",
-  "description": "",
+  "description": "Contains cross-project commonly used NestJS code for basic workflow management.",
   "author": "Sierra Labs",
   "license": "Sierra Labs",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sierra-labs/nest-workflow.git"
+  },
+  "homepage": "https://github.com/sierra-labs/nest-workflow#readme",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
